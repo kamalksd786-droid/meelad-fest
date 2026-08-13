@@ -165,7 +165,7 @@ export default function TeacherDashboardPage() {
     const { data, error } = await supabase
       .from("students")
       .select("*")
-      .eq("team", team)
+      .ilike("team", team.trim())
       .order("student_name");
 
     setLoadingStudents(false);

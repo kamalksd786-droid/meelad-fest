@@ -339,13 +339,45 @@ export default function StudentsPage() {
             >
               📥 Bulk Upload
             </Link>
+<button
+  type="button"
+  onClick={() => {
+    const csv = [
+      [
+        "Admission Number",
+        "Student Name",
+        "Class",
+        "Division",
+        "Gender",
+        "Team",
+        "Category",
+        "Chest No."
+      ],
+      ["", "", "", "", "", "", "", ""],
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
 
-            <button
-              type="button"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-lg font-bold"
-            >
-              📄 Download Template
-            </button>
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "student-import-template.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }}
+  className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-lg font-bold"
+>
+  📄 Download Template
+</button>
 
           </div>
         </div>
@@ -663,141 +695,126 @@ export default function StudentsPage() {
                   />
                 </th>
 
-                <th className="p-4 text-left">
-                  Admission No
-                </th>
+               <th className="p-4 text-left">
+  Admission No
+</th>
 
-                <th className="p-4 text-left">
-                  Student Name
-                </th>
+<th className="p-4 text-left">
+  Student Name
+</th>
 
-                <th className="p-4 text-left">
-                  Class
-                </th>
+<th className="p-4 text-left">
+  Class
+</th>
 
-                <th className="p-4 text-left">
-                  Category
-                </th>
+<th className="p-4 text-left">
+  Division
+</th>
 
-                <th className="p-4 text-left">
-                  Gender
-                </th>
+<th className="p-4 text-left">
+  Category
+</th>
 
-                <th className="p-4 text-left">
-                  Team
-                </th>
+<th className="p-4 text-left">
+  Gender
+</th>
 
-                <th className="p-4 text-center">
-                  Actions
-                </th>
+<th className="p-4 text-left">
+  Team
+</th>
 
+<th className="p-4 text-left">
+  Chest No.
+</th>
+
+<th className="p-4 text-center">
+  Actions
+</th>
               </tr>
 
             </thead>
 
-            <tbody>
+           <tbody>
+  {filteredStudents.map((student) => (
+    <tr
+      key={student.id}
+      className={`border-b hover:bg-gray-50 ${
+        selectedIds.includes(student.id) ? "bg-red-50" : ""
+      }`}
+    >
+      <td className="p-4 text-center">
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(student.id)}
+          onChange={() => toggleStudent(student.id)}
+          className="w-5 h-5"
+        />
+      </td>
 
-              {filteredStudents.map(
-                (student) => (
+      <td className="p-4">
+        {student.admission_no}
+      </td>
 
-                  <tr
-                    key={student.id}
-                    className={`border-b hover:bg-gray-50 ${
-                      selectedIds.includes(
-                        student.id
-                      )
-                        ? "bg-red-50"
-                        : ""
-                    }`}
-                  >
+      <td className="p-4 font-semibold">
+        {student.student_name}
+      </td>
 
-                    <td className="p-4 text-center">
+      <td className="p-4">
+        {student.class}
+      </td>
 
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(
-                          student.id
-                        )}
-                        onChange={() =>
-                          toggleStudent(
-                            student.id
-                          )
-                        }
-                        className="w-5 h-5"
-                      />
+      <td className="p-4">
+        {student.division}
+      </td>
 
-                    </td>
+      <td className="p-4">
+        {student.category}
+      </td>
 
-                    <td className="p-4">
-                      {student.admission_no}
-                    </td>
+      <td className="p-4">
+        {student.gender}
+      </td>
 
-                    <td className="p-4 font-semibold">
-                      {student.student_name}
-                    </td>
+      <td className="p-4">
+        {student.team}
+      </td>
 
-                    <td className="p-4">
-                      {student.class}
-                    </td>
+      <td className="p-4">
+        {student.chest_no}
+      </td>
 
-                    <td className="p-4">
-                      {student.category}
-                    </td>
+      <td className="p-4 text-center whitespace-nowrap">
+        <button
+          type="button"
+          onClick={() => editStudent(student)}
+          className="text-blue-600 hover:text-blue-800 mr-4 font-semibold"
+        >
+          ✏️ Edit
+        </button>
 
-                    <td className="p-4">
-                      {student.gender}
-                    </td>
+        <button
+          type="button"
+          onClick={() => deleteStudent(student)}
+          disabled={deleting}
+          className="text-red-600 hover:text-red-800 disabled:text-gray-400 font-semibold"
+        >
+          🗑️ Delete
+        </button>
+      </td>
+    </tr>
+  ))}
 
-                    <td className="p-4">
-                      {student.team}
-                    </td>
-
-                    <td className="p-4 text-center whitespace-nowrap">
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          editStudent(student)
-                        }
-                        className="text-blue-600 hover:text-blue-800 mr-4 font-semibold"
-                      >
-                        ✏️ Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteStudent(
-                            student
-                          )
-                        }
-                        disabled={deleting}
-                        className="text-red-600 hover:text-red-800 disabled:text-gray-400 font-semibold"
-                      >
-                        🗑️ Delete
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                )
-              )}
-
-              {filteredStudents.length ===
-                0 && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="p-8 text-center text-gray-500"
-                  >
-                    No students found.
-                  </td>
-                </tr>
-              )}
-
-            </tbody>
-
+  {filteredStudents.length === 0 && (
+    <tr>
+      <td
+        colSpan={10}
+        className="p-8 text-center text-gray-500"
+      >
+        No students found.
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
 
         </div>

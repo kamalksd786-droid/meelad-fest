@@ -27,10 +27,37 @@ export default function ImportStudentsPage() {
     const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
 const students = rows.map((row) => ({
-  admission_no: String(row.admission_no || "").trim(),
-  student_name: String(row.student_name || "").trim(),
-  category: String(row.category || "").trim(),
-  team: String(row.team || "").trim(),
+  admission_no: String(
+    row["Admission Number"] || row.admission_no || ""
+  ).trim(),
+
+  student_name: String(
+    row["Student Name"] || row.student_name || ""
+  ).trim(),
+
+  class: String(
+    row["Class"] || row.class || ""
+  ).trim(),
+
+  division: String(
+    row["Division"] || row.division || ""
+  ).trim(),
+
+  gender: String(
+    row["Gender"] || row.gender || ""
+  ).trim(),
+
+  team: String(
+    row["Team"] || row.team || ""
+  ).trim(),
+
+  chest_no: String(
+    row["Chest No."] || row["Chest No"] || row.chest_no || ""
+  ).trim(),
+
+  category: String(
+    row["Category"] || row.category || ""
+  ).trim(),
 }));
 
 alert(JSON.stringify(students, null, 2));
@@ -61,7 +88,7 @@ const { error } = await supabase
 
           <input
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.csv"
             onChange={handleFileUpload}
             className="mb-6"
           />

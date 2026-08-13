@@ -75,13 +75,14 @@ export default function LeaderboardPage() {
     // ------------------------------------------
 
     const { data: resultData, error: resultError } =
-      await supabase
-        .from("results")
-        .select(
-          "team, points, category, group_result_id"
-        )
-        .eq("published", true);
+  await supabase
+    .from("results")
+    .select(
+      "team, points, category, group_result_id, published"
+    )
+    .eq("published", true);
 
+console.log("PUBLISHED RESULTS:", resultData);
     if (resultError) {
       console.error(
         "Result loading error:",
@@ -91,7 +92,12 @@ export default function LeaderboardPage() {
       return;
     }
 
-    const results: Result[] = resultData || [];
+   const results: Result[] = (resultData || []).map((result) => ({
+  team: result.team || "",
+  points: Number(result.points) || 0,
+  category: result.category || null,
+  group_result_id: result.group_result_id || null,
+}));
 
     // ==========================================
     // OVERALL TEAM POINTS

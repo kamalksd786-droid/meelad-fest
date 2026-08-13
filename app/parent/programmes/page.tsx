@@ -328,6 +328,31 @@ export default function ParentProgrammePage() {
     }
 
     setSaving(true);
+        // --------------------------------------------------
+    // CHECK WHETHER THIS STUDENT IS ALREADY REGISTERED
+    // --------------------------------------------------
+
+    const { data: existingRegistrations, error: existingError } =
+      await supabase
+        .from("registrations")
+        .select("id")
+        .eq("admission_no", student.admission_no)
+        .limit(1);
+
+    if (existingError) {
+      console.error(existingError);
+      alert(existingError.message);
+      setSaving(false);
+      return;
+    }
+
+    if (existingRegistrations && existingRegistrations.length > 0) {
+      alert(
+        "This student has already been registered. A student can register only once and cannot register for another programme."
+      );
+      setSaving(false);
+      return;
+    }
 
     const successfullyRegistered: any[] = [];
 
@@ -848,9 +873,9 @@ export default function ParentProgrammePage() {
               {/* POSTER */}
 
               <div
-                id="registration-confirmation"
-                className="bg-white max-w-3xl mx-auto shadow-2xl border-4 border-purple-800 p-8"
-              >
+  id="registration-confirmation"
+  className="bg-white max-w-3xl mx-auto shadow-2xl border-4 border-purple-800 p-8 print-poster"
+>
 
                 {/* POSTER HEADER */}
 
@@ -1146,7 +1171,93 @@ export default function ParentProgrammePage() {
           )}
 
       </div>
+<style jsx global>{`
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
 
+    body {
+      background: white !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    body * {
+      visibility: hidden !important;
+    }
+
+    #registration-confirmation,
+    #registration-confirmation * {
+      visibility: visible !important;
+    }
+
+    #registration-confirmation {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 10px !important;
+      box-shadow: none !important;
+      border-width: 2px !important;
+      font-size: 11px !important;
+    }
+
+    #registration-confirmation h1 {
+      font-size: 24px !important;
+      margin: 0 !important;
+    }
+
+    #registration-confirmation h2 {
+      font-size: 15px !important;
+      margin-top: 8px !important;
+      margin-bottom: 6px !important;
+    }
+
+    #registration-confirmation h3 {
+      font-size: 13px !important;
+      padding-bottom: 3px !important;
+    }
+
+    #registration-confirmation .mt-6 {
+      margin-top: 8px !important;
+    }
+
+    #registration-confirmation .mt-5 {
+      margin-top: 6px !important;
+    }
+
+    #registration-confirmation .mb-5 {
+      margin-bottom: 6px !important;
+    }
+
+    #registration-confirmation .mb-4 {
+      margin-bottom: 4px !important;
+    }
+
+    #registration-confirmation .p-5 {
+      padding: 8px !important;
+    }
+
+    #registration-confirmation .py-2 {
+      padding-top: 3px !important;
+      padding-bottom: 3px !important;
+    }
+
+    #registration-confirmation .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 3px !important;
+    }
+
+    #registration-confirmation li {
+      padding-top: 3px !important;
+      padding-bottom: 3px !important;
+    }
+  }
+`}</style>
     </div>
+    
   );
 }
