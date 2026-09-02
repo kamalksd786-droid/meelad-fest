@@ -328,32 +328,127 @@ export default function ParentProgrammePage() {
     }
 
     setSaving(true);
-        // --------------------------------------------------
-    // CHECK WHETHER THIS STUDENT IS ALREADY REGISTERED
     // --------------------------------------------------
+// CHECK EXISTING REGISTRATIONS AGAINST CATEGORY LIMITS
+// --------------------------------------------------
 
-    const { data: existingRegistrations, error: existingError } =
-      await supabase
-        .from("registrations")
-        .select("id")
-        .eq("admission_no", student.admission_no)
-        .limit(1);
+const {
+  data: existingRegistrations,
+  error: existingError,
+} = await supabase
+  .from("registrations")
+  .select("id, programme_id")
+  .eq("admission_no", student.admission_no);
 
-    if (existingError) {
-      console.error(existingError);
-      alert(existingError.message);
-      setSaving(false);
-      return;
-    }
+if (existingError) {
+  console.error(existingError);
+  alert(existingError.message);
+  setSaving(false);
+  return;
+}
 
-    if (existingRegistrations && existingRegistrations.length > 0) {
-      alert(
-        "This student has already been registered. A student can register only once and cannot register for another programme."
-      );
-      setSaving(false);
-      return;
-    }
+// Get the programme details for already registered programmes
+const existingProgrammeIds =
+  (existingRegistrations || [])
+    .map((r) => r.programme_id)
+    .filter(Boolean);
 
+let existingProgrammeData: any[] = [];
+
+if (existingProgrammeIds.length > 0) {
+  const {
+    data,
+    error: existingProgrammeError,
+  } = await supabase
+    .from("programmes")
+    .select("*")
+    .in("id", existingProgrammeIds);
+
+  if (existingProgrammeError) {
+    console.error(existingProgrammeError);
+    alert(existingProgrammeError.message);
+    setSaving(false);
+    return;
+  }
+
+  existingProgrammeData = data || [];
+}
+
+// Count already registered programmes by section
+const existingCounts = {
+  stage: 0,
+  offStage: 0,
+  group: 0,
+  general: 0,
+};
+
+existingProgrammeData.forEach((programme) => {
+  const section = getSection(programme);
+
+  if (
+    section === "stage" ||
+    section === "offStage" ||
+    section === "group" ||
+    section === "general"
+  ) {
+    existingCounts[section]++;
+  }
+});
+
+// Check selected programmes against existing registrations
+const selectedCounts = {
+  stage: 0,
+  offStage: 0,
+  group: 0,
+  general: 0,
+};
+
+selectedProgrammes.forEach((programme) => {
+  const section = getSection(programme);
+
+  if (
+    section === "stage" ||
+    section === "offStage" ||
+    section === "group" ||
+    section === "general"
+  ) {
+    selectedCounts[section]++;
+  }
+});
+
+// Check limits
+const sectionNames: Record<string, string> = {
+  stage: "Stage",
+  offStage: "Off Stage",
+  group: "Group",
+  general: "General",
+};
+
+const sectionLimits = {
+  stage: limits?.stage || 0,
+  offStage: limits?.offStage || 0,
+  group: limits?.group || 0,
+  general: limits?.general || 0,
+};
+
+for (const section of [
+  "stage",
+  "offStage",
+  "group",
+  "general",
+] as const) {
+  const total =
+    existingCounts[section] + selectedCounts[section];
+
+  if (total > sectionLimits[section]) {
+    alert(
+      `${category} students can register maximum ${sectionLimits[section]} programme(s) from ${sectionNames[section]}. You already have ${existingCounts[section]} registered.`
+    );
+
+    setSaving(false);
+    return;
+  }
+}
     const successfullyRegistered: any[] = [];
 
     for (const programme of selectedProgrammes) {
@@ -886,7 +981,7 @@ export default function ParentProgrammePage() {
                   </h1>
 
                   <p className="text-xl font-bold mt-2">
-                    GLOBAL PUBLIC SCHOOL
+                    THE GLOBAL PUBLIC SHOOL 
                   </p>
 
                   <p className="text-lg font-semibold text-gray-600 mt-1">
@@ -1155,7 +1250,7 @@ export default function ParentProgrammePage() {
                   </p>
 
                   <p className="text-gray-600">
-                    Global Public School
+                    THE GLOBAL PUBLIC SHOOL 
                   </p>
 
                   <p className="text-sm text-gray-500 mt-2">

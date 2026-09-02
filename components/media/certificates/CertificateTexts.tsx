@@ -5,6 +5,8 @@ type Props = {
   programme: string;
   category: string;
   team: string;
+  admissionNo?: string;
+  achievement?: string;
 };
 
 export default function CertificateTexts({
@@ -12,57 +14,54 @@ export default function CertificateTexts({
   programme,
   category,
   team,
+  admissionNo = "",
+  achievement = "PARTICIPATION",
 }: Props) {
   return (
     <>
-      <h1
+      {/* LINE 1 */}
+      <div
         style={{
           position: "absolute",
-          top: 300,
-          width: "100%",
+          top: 335,
+          left: 70,
+          width: 983,
           textAlign: "center",
-          fontSize: 52,
-          fontWeight: "bold",
+          fontSize: 25,
+          fontWeight: 700,
+          color: "#173F3F",
+          whiteSpace: "nowrap",
+          zIndex: 4,
         }}
       >
-        {studentName}
-      </h1>
+        Mr./Mrs. {studentName}
+        {"    "}
+        Admission No: {admissionNo}
+      </div>
 
-      <p
+      {/* LINE 2 */}
+      <div
         style={{
           position: "absolute",
-          top: 390,
-          width: "100%",
+          top: 385,
+          left: 50,
+          width: 1023,
           textAlign: "center",
-          fontSize: 28,
+          fontSize: 21,
+          fontWeight: 700,
+          color: "#173F3F",
+          whiteSpace: "nowrap",
+          zIndex: 4,
         }}
       >
-        {programme}
-      </p>
-
-      <p
-        style={{
-          position: "absolute",
-          top: 440,
-          width: "100%",
-          textAlign: "center",
-          fontSize: 24,
-        }}
-      >
-        {category}
-      </p>
-
-      <p
-        style={{
-          position: "absolute",
-          top: 490,
-          width: "100%",
-          textAlign: "center",
-          fontSize: 24,
-        }}
-      >
-        {team}
-      </p>
+        for securing {achievement}
+        {"    "}
+        Programme: {programme}
+        {"    "}
+        Category: {category}
+        {"    "}
+        Team: {team}
+      </div>
     </>
   );
 }

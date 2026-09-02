@@ -17,7 +17,7 @@ export default function LiveHeader() {
       </p>
 
       <p className="text-green-200 mt-2">
-        Global Public School
+        THE GLOBAL PUBLIC SHOOL 
       </p>
 
     </div>

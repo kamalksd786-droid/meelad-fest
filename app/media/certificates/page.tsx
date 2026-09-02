@@ -24,11 +24,13 @@ export default function CertificatePage() {
 
  const [certificateData, setCertificateData] = useState({
   studentName: "",
+  admissionNo: "",
   programme: "",
   category: "",
   team: "",
   certificateNo: "",
   date: "",
+  achievement: "PARTICIPATION",
 });
 
   useEffect(() => {
@@ -57,27 +59,65 @@ export default function CertificatePage() {
   }
 
  async function selectStudent(student: any) {
-  const { data } = await supabase
+  const programmeName =
+    programmes.find(
+      (p) => String(p.id) === String(selectedProgramme)
+    )?.programme_name || "";
+
+  // Get student details
+  const { data, error } = await supabase
     .from("students")
     .select("*")
     .eq("admission_no", student.admission_no)
     .single();
 
-  if (!data) return;
+  if (error || !data) {
+    console.error(error);
+    return;
+  }
+
+  // Get ONLY the published result for this student
+  const { data: result, error: resultError } = await supabase
+    .from("results")
+    .select("position, published")
+    .eq("admission_no", student.admission_no)
+    .eq("programme_id", Number(selectedProgramme))
+    .eq("published", true)
+    .maybeSingle();
+
+  if (resultError) {
+    console.error(resultError);
+  }
+
+  // Convert result position into certificate wording
+  let achievement = "PARTICIPATION";
+
+  if (result?.position === "First") {
+    achievement = "FIRST PLACE";
+  } else if (result?.position === "Second") {
+    achievement = "SECOND PLACE";
+  } else if (result?.position === "Third") {
+    achievement = "THIRD PLACE";
+  }
 
   setCertificateData((previous) => ({
     ...previous,
-    studentName: data.student_name || "",
-    programme:
-      programmes.find(
-        (p) =>
-          String(p.id) === String(selectedProgramme)
-      )?.programme_name || "",
+
+    studentName:
+      data.student_name || student.student_name || "",
+
+    admissionNo:
+      data.admission_no || student.admission_no || "",
+
+    programme: programmeName,
+
     category: data.category || "",
+
     team: data.team || "",
+
+    achievement,
   }));
 }
-
  async function exportPNG() {
   if (!certificateRef.current) return;
 
@@ -146,13 +186,15 @@ async function exportPDF() {
             <div className="flex-1 flex items-center justify-center bg-gray-200 rounded-xl p-4">
 
               <div ref={certificateRef}>
-                <CertificateCanvas
-                  template={selectedTemplate}
-                  studentName={certificateData.studentName}
-                  programme={certificateData.programme}
-                  category={certificateData.category}
-                  team={certificateData.team}
-                />
+               <CertificateCanvas
+  template={selectedTemplate}
+  studentName={certificateData.studentName}
+  admissionNo={certificateData.admissionNo}
+  programme={certificateData.programme}
+  category={certificateData.category}
+  team={certificateData.team}
+  achievement={certificateData.achievement}
+/>
               </div>
 
             </div>
@@ -161,7 +203,7 @@ async function exportPDF() {
 
         </div>
 
-        <CertificateRightPanel
+       <CertificateRightPanel
   certificateData={certificateData}
   setCertificateData={setCertificateData}
 />

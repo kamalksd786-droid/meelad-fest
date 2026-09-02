@@ -168,16 +168,56 @@ export default function TeacherDashboardPage() {
       .ilike("team", team.trim())
       .order("student_name");
 
-    setLoadingStudents(false);
-
     if (error) {
+      setLoadingStudents(false);
       console.error(error);
       alert(error.message);
       return;
     }
 
-    setStudents(data || []);
-    setFilteredStudents(data || []);
+    const studentList = data || [];
+
+    // Load all programme registrations for the students in this team.
+    const admissionNumbers = studentList
+      .map((student) => String(student.admission_no || "").trim())
+      .filter(Boolean);
+
+    let registrationData: any[] = [];
+
+    if (admissionNumbers.length > 0) {
+      const {
+        data: registrations,
+        error: registrationError,
+      } = await supabase
+        .from("registrations")
+        .select("id, admission_no, programme_id, programme_name")
+        .in("admission_no", admissionNumbers);
+
+      if (registrationError) {
+        console.error(
+          "Registration loading error:",
+          registrationError
+        );
+      } else {
+        registrationData = registrations || [];
+      }
+    }
+
+    // Attach assigned programmes to every student.
+    const studentsWithProgrammes = studentList.map(
+      (student) => ({
+        ...student,
+        assignedProgrammes: registrationData.filter(
+          (registration) =>
+            String(registration.admission_no || "").trim() ===
+            String(student.admission_no || "").trim()
+        ),
+      })
+    );
+
+    setStudents(studentsWithProgrammes);
+    setFilteredStudents(studentsWithProgrammes);
+    setLoadingStudents(false);
   }
 
   // --------------------------------------------------
@@ -955,7 +995,7 @@ export default function TeacherDashboardPage() {
 
             <div className="overflow-x-auto">
 
-              <table className="w-full border-collapse">
+              <table className="w-full min-w-[1100px] border-collapse">
 
                 <thead>
 
@@ -974,11 +1014,23 @@ export default function TeacherDashboardPage() {
                     </th>
 
                     <th className="text-left p-3">
+                      Team
+                    </th>
+
+                    <th className="text-left p-3">
                       Category
                     </th>
 
                     <th className="text-left p-3">
                       Gender
+                    </th>
+
+                    <th className="text-left p-3">
+                      Assigned Programme(s)
+                    </th>
+
+                    <th className="text-left p-3">
+                      Status
                     </th>
 
                     <th className="text-left p-3">
@@ -1011,37 +1063,67 @@ export default function TeacherDashboardPage() {
                         </td>
 
                         <td className="p-3">
-                          {
-                            student.class
-                          }
+                          {student.class}
+                        </td>
+
+                        <td className="p-3 font-semibold uppercase">
+                          {student.team}
                         </td>
 
                         <td className="p-3">
-                          {
-                            student.category
-                          }
+                          {student.category}
                         </td>
 
                         <td className="p-3">
-                          {
-                            student.gender
-                          }
+                          {student.gender}
+                        </td>
+
+                        <td className="p-3 align-top text-sm">
+                          {student.assignedProgrammes?.length > 0 ? (
+                            <div className="leading-6 text-gray-800">
+                              {student.assignedProgrammes.map(
+                                (programme: any, index: number) => (
+                                  <span key={programme.id}>
+                                    {programme.programme_name}
+                                    {index <
+                                      student.assignedProgrammes.length - 1 && (
+                                      <span className="mx-1 text-gray-400">
+                                        •
+                                      </span>
+                                    )}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">
+                              —
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-3">
+                          {student.assignedProgrammes?.length > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 whitespace-nowrap">
+                              ✓ Assigned
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-500 whitespace-nowrap">
+                              ○ Not Assigned
+                            </span>
+                          )}
+                        </td>
 
+                        <td className="p-3">
                           <button
                             type="button"
                             onClick={() =>
-                              selectStudent(
-                                student
-                              )
+                              selectStudent(student)
                             }
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold"
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold whitespace-nowrap"
                           >
                             🎭 Assign Programme
                           </button>
-
                         </td>
 
                       </tr>

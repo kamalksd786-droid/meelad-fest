@@ -9,41 +9,71 @@ export default function ParentDashboard() {
 
   const [admissionNo, setAdmissionNo] = useState("");
   const [studentClass, setStudentClass] = useState("");
+  const [division, setDivision] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function findStudent() {
-    if (!admissionNo.trim()) {
-      alert("Please enter admission number.");
-      return;
-    }
-
-    if (!studentClass.trim()) {
-      alert("Please enter class.");
-      return;
-    }
-
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("students")
-      .select("*")
-      .eq("admission_no", admissionNo.trim())
-      .eq("class", studentClass.trim())
-      .single();
-
-    setLoading(false);
-
-    if (error || !data) {
-      alert("Student not found. Please check Admission Number and Class.");
-      return;
-    }
-
-    // Store the selected student temporarily
-    localStorage.setItem("parentStudent", JSON.stringify(data));
-
-    // Go to programme selection
-    router.push("/parent/programmes");
+  if (!admissionNo.trim()) {
+    alert("Please enter admission number.");
+    return;
   }
+
+  if (!studentClass.trim()) {
+    alert("Please enter class.");
+    return;
+  }
+
+  if (!division.trim()) {
+    alert("Please enter division.");
+    return;
+  }
+
+  setLoading(true);
+
+  // Search ONLY by Admission Number first
+  const { data, error } = await supabase
+    .from("students")
+    .select("*")
+    .eq("admission_no", admissionNo.trim())
+    .maybeSingle();
+
+  setLoading(false);
+
+  if (error || !data) {
+    alert("Student not found. Please check Admission Number.");
+    return;
+  }
+
+  const dbClass = String(data.class || "").trim().toUpperCase();
+  const dbDivision = String(data.division || "").trim().toUpperCase();
+
+  const enteredClass = studentClass.trim().toUpperCase();
+  const enteredDivision = division.trim().toUpperCase();
+
+  // Works for "1" + "A" OR "1A"
+  const classMatched =
+    dbClass === enteredClass ||
+    dbClass === `${enteredClass}${enteredDivision}` ||
+    dbClass === `${enteredClass} ${enteredDivision}`;
+
+  const divisionMatched =
+    dbDivision === "" || dbDivision === enteredDivision;
+
+  if (!classMatched || !divisionMatched) {
+  alert(
+    `Student found, but Class/Division does not match.\n\n` +
+    `Database Class: ${data.class ?? "-"}\n` +
+    `Database Division: ${data.division ?? "-"}\n\n` +
+    `You entered:\n` +
+    `Class: ${studentClass}\n` +
+    `Division: ${division}`
+  );
+  return;
+}
+
+  localStorage.setItem("parentStudent", JSON.stringify(data));
+  router.push("/parent/programmes");
+}
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,8 +99,8 @@ export default function ParentDashboard() {
         </h2>
 
         <p className="text-gray-600 mb-8">
-          Enter your child's Admission Number and Class to register
-          for MUNAFASA programmes.
+          Enter your child's Admission Number, Class and
+          Division to register for MUNAFASA programmes.
         </p>
 
         {/* STUDENT SEARCH */}
@@ -90,7 +120,9 @@ export default function ParentDashboard() {
             <input
               type="text"
               value={admissionNo}
-              onChange={(e) => setAdmissionNo(e.target.value)}
+              onChange={(e) =>
+                setAdmissionNo(e.target.value)
+              }
               placeholder="Enter Admission Number"
               className="w-full border rounded-lg p-4"
             />
@@ -98,7 +130,7 @@ export default function ParentDashboard() {
           </div>
 
           {/* CLASS */}
-          <div className="mb-6">
+          <div className="mb-5">
 
             <label className="block font-semibold mb-2">
               Class
@@ -107,9 +139,30 @@ export default function ParentDashboard() {
             <input
               type="text"
               value={studentClass}
-              onChange={(e) => setStudentClass(e.target.value)}
-              placeholder="Example: 6A"
+              onChange={(e) =>
+                setStudentClass(e.target.value)
+              }
+              placeholder="Example: 6"
               className="w-full border rounded-lg p-4"
+            />
+
+          </div>
+
+          {/* DIVISION */}
+          <div className="mb-6">
+
+            <label className="block font-semibold mb-2">
+              Division
+            </label>
+
+            <input
+              type="text"
+              value={division}
+              onChange={(e) =>
+                setDivision(e.target.value)
+              }
+              placeholder="Example: A"
+              className="w-full border rounded-lg p-4 uppercase"
             />
 
           </div>
@@ -120,7 +173,9 @@ export default function ParentDashboard() {
             disabled={loading}
             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-lg font-bold text-lg"
           >
-            {loading ? "Searching..." : "🔍 Find Student"}
+            {loading
+              ? "Searching..."
+              : "🔍 Find Student"}
           </button>
 
         </div>
@@ -129,9 +184,6 @@ export default function ParentDashboard() {
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
 
           <div className="bg-blue-600 text-white rounded-2xl p-6">
-            <div className="text-4xl mb-3">
-              🎭
-            </div>
 
             <h3 className="text-xl font-bold">
               Programme Registration
@@ -140,9 +192,11 @@ export default function ParentDashboard() {
             <p className="mt-2 text-blue-100">
               Find your child and select MUNAFASA programmes.
             </p>
+
           </div>
 
           <div className="bg-gray-400 text-white rounded-2xl p-6">
+
             <div className="text-4xl mb-3">
               🏆
             </div>
@@ -154,6 +208,7 @@ export default function ParentDashboard() {
             <p className="mt-2 text-gray-100">
               Published results will be available here.
             </p>
+
           </div>
 
         </div>

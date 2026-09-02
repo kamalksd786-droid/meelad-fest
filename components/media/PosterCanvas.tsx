@@ -10,6 +10,8 @@ import PosterTexts from "./PosterTexts";
 import FooterImage from "./FooterImage";
 import WinnerBadge from "./WinnerBadge";
 import WinnerRibbon from "./WinnerRibbon";
+import LogoImage from "./LogoImage";
+
 
 type PosterData = {
   studentName: string;
@@ -35,10 +37,34 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
   pixelRatio={3}
 >
     <Layer>
+      <LogoImage
+  src="/media/logos/munafasa-logo.png"
+  x={285}
+  y={175}
+  width={130}
+  height={70}
+/>
 
-      {/* Background */}
-     <BackgroundImage
-  src={`/media/backgrounds/${template}.png`}
+      <BackgroundImage
+  src="/media/posters/poster-background..png"
+/>
+
+{/* School Logo — Top Left */}
+<LogoImage
+  src="/media/logos/gps-logo.png"
+  x={35}
+  y={35}
+  width={100}
+  height={80}
+/>
+
+{/* MUNAFASA Logo — Top Right */}
+<LogoImage
+  src="/media/logos/munafasa-logo.png"
+  x={550}
+  y={25}
+  width={125}
+  height={95}
 />
 
 <WinnerBadge template={template} />
@@ -48,9 +74,9 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
       {/* Student Photo */}
       <StudentPhoto
         src={posterData.photo}
-        x={350}
-        y={385}
-        radius={90}
+       x={350}
+y={400}
+radius={120}
       />
 
       {/* Poster Text */}
@@ -62,9 +88,8 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
   template={template}
 />
 
-     {/* Footer */}
-{/* <FooterImage /> */}
-
+    {/* Footer */}
+<FooterImage />
     </Layer>
   </Stage>
     );

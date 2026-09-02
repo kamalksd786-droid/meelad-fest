@@ -60,26 +60,21 @@ export default function StudentDirectoryPage() {
     }
   }
 
-  async function loadData() {
-    setLoading(true);
+ async function loadData() {
+  setLoading(true);
 
-    const [studentsResponse, registrationsResponse] =
-      await Promise.all([
-        supabase
-          .from("students")
-          .select(
-            "id, admission_no, student_name, class, team, category, gender"
-          )
-          .order("class")
-          .order("student_name"),
+  try {
+    // ==========================================
+    // LOAD STUDENTS
+    // ==========================================
 
-        supabase
-          .from("registrations")
-          .select(
-            "id, admission_no, programme_name"
-          )
-          .order("id", { ascending: false }),
-      ]);
+    const studentsResponse = await supabase
+      .from("students")
+      .select(
+        "id, admission_no, student_name, class, team, category, gender"
+      )
+      .order("class")
+      .order("student_name");
 
     if (studentsResponse.error) {
       console.error(
@@ -89,61 +84,112 @@ export default function StudentDirectoryPage() {
 
       alert(studentsResponse.error.message);
       setStudents([]);
-    } else {
-      setStudents(
-        studentsResponse.data || []
-      );
+      setLoading(false);
+      return;
     }
 
-    if (registrationsResponse.error) {
-      console.error(
-        "Registration loading error:",
-        registrationsResponse.error
+    setStudents(studentsResponse.data || []);
+
+    // ==========================================
+    // LOAD ALL REGISTRATIONS
+    // ==========================================
+
+    const allRegistrations: Registration[] = [];
+
+    const batchSize = 1000;
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("registrations")
+        .select(
+          "id, admission_no, programme_name"
+        )
+        .order("id", { ascending: false })
+        .range(from, from + batchSize - 1);
+
+      if (error) {
+        console.error(
+          "Registration loading error:",
+          error
+        );
+
+        alert(error.message);
+        setRegistrations([]);
+        break;
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      allRegistrations.push(
+        ...(data as Registration[])
       );
 
-      alert(
-        registrationsResponse.error.message
-      );
+      if (data.length < batchSize) {
+        break;
+      }
 
-      setRegistrations([]);
-    } else {
-      setRegistrations(
-        registrationsResponse.data || []
-      );
+      from += batchSize;
     }
 
+    console.log(
+      "Total registrations loaded:",
+      allRegistrations.length
+    );
+
+    setRegistrations(allRegistrations);
+
+  } catch (error) {
+    console.error(
+      "Student Directory loading error:",
+      error
+    );
+
+    alert("Failed to load Student Directory data.");
+  } finally {
     setLoading(false);
   }
+}
 
   // ------------------------------------------
   // GET PROGRAMMES FOR A STUDENT
   // ------------------------------------------
 
-  function getStudentProgrammes(
-    admissionNo: string | null
-  ) {
-    if (!admissionNo) {
-      return [];
-    }
-
-    const programmes = registrations
-      .filter(
-        (registration) =>
-          registration.admission_no ===
-          admissionNo
-      )
-      .map(
-        (registration) =>
-          registration.programme_name
-      )
-      .filter(Boolean) as string[];
-
-    // Remove duplicate programme names
-    return Array.from(
-      new Set(programmes)
-    );
+ function getStudentProgrammes(
+  admissionNo: string | null
+) {
+  if (!admissionNo) {
+    return [];
   }
 
+  const studentAdmissionNo = String(
+    admissionNo
+  ).trim();
+
+  const programmes = registrations
+    .filter((registration) => {
+      const registrationAdmissionNo =
+        String(
+          registration.admission_no ?? ""
+        ).trim();
+
+      return (
+        registrationAdmissionNo ===
+        studentAdmissionNo
+      );
+    })
+    .map(
+      (registration) =>
+        registration.programme_name
+    )
+    .filter(Boolean) as string[];
+
+  return Array.from(
+    new Set(programmes)
+  );
+}
   // ------------------------------------------
   // UNIQUE CLASS LIST
   // ------------------------------------------
@@ -566,35 +612,30 @@ export default function StudentDirectoryPage() {
 
                       {/* PROGRAMMES */}
 
-                      <td className="p-4">
-
+                      <td className="p-4 align-top">
                         {assigned ? (
-
-                          <div className="space-y-2">
-
+                          <div className="text-sm leading-6 text-gray-800">
                             {studentProgrammes.map(
                               (programme, programmeIndex) => (
-
-                                <div
+                                <span
                                   key={`${student.id}-${programme}-${programmeIndex}`}
-                                  className="bg-green-50 border border-green-200 rounded-lg px-3 py-2"
                                 >
-                                  🎭 {programme}
-                                </div>
-
+                                  {programme}
+                                  {programmeIndex <
+                                    studentProgrammes.length - 1 && (
+                                    <span className="mx-1 text-gray-400">
+                                      •
+                                    </span>
+                                  )}
+                                </span>
                               )
                             )}
-
                           </div>
-
                         ) : (
-
                           <span className="text-gray-400">
                             —
                           </span>
-
                         )}
-
                       </td>
 
                       {/* STATUS */}

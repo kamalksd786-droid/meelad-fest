@@ -46,7 +46,52 @@ export default function StudentsPage() {
       return;
     }
 
-    setStudents(data || []);
+    const studentList = data || [];
+
+    // Load assigned programmes for all students
+    const admissionNumbers = studentList
+      .map((student) => student.admission_no)
+      .filter(Boolean);
+
+    let registrationData: any[] = [];
+
+    if (admissionNumbers.length > 0) {
+      const {
+        data: registrations,
+        error: registrationError,
+      } = await supabase
+        .from("registrations")
+        .select(
+          "id, admission_no, programme_id, programme_name"
+        )
+        .in("admission_no", admissionNumbers);
+
+      if (registrationError) {
+        console.error(
+          "Unable to load assigned programmes:",
+          registrationError
+        );
+      } else {
+        registrationData = registrations || [];
+      }
+    }
+
+    const studentsWithProgrammes = studentList.map(
+      (student) => {
+        const assignedProgrammes = registrationData.filter(
+          (registration) =>
+            String(registration.admission_no) ===
+            String(student.admission_no)
+        );
+
+        return {
+          ...student,
+          assignedProgrammes,
+        };
+      }
+    );
+
+    setStudents(studentsWithProgrammes);
     setSelectedIds([]);
   }
 
@@ -727,6 +772,14 @@ export default function StudentsPage() {
   Chest No.
 </th>
 
+<th className="p-4 text-left">
+  Assigned Programme(s)
+</th>
+
+<th className="p-4 text-left">
+  Status
+</th>
+
 <th className="p-4 text-center">
   Actions
 </th>
@@ -783,6 +836,42 @@ export default function StudentsPage() {
         {student.chest_no}
       </td>
 
+      <td className="p-4 align-top text-sm min-w-[320px]">
+        {student.assignedProgrammes?.length > 0 ? (
+          <div className="leading-6 text-gray-800">
+            {student.assignedProgrammes.map(
+              (programme: any, index: number) => (
+                <span key={programme.id}>
+                  {programme.programme_name}
+                  {index <
+                    student.assignedProgrammes.length - 1 && (
+                    <span className="mx-1 text-gray-400">
+                      •
+                    </span>
+                  )}
+                </span>
+              )
+            )}
+          </div>
+        ) : (
+          <span className="text-gray-400">
+            No programmes assigned
+          </span>
+        )}
+      </td>
+
+      <td className="p-4 whitespace-nowrap">
+        {student.assignedProgrammes?.length > 0 ? (
+          <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
+            ✓ Assigned
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-500">
+            Not Assigned
+          </span>
+        )}
+      </td>
+
       <td className="p-4 text-center whitespace-nowrap">
         <button
           type="button"
@@ -807,7 +896,7 @@ export default function StudentsPage() {
   {filteredStudents.length === 0 && (
     <tr>
       <td
-        colSpan={10}
+        colSpan={12}
         className="p-8 text-center text-gray-500"
       >
         No students found.

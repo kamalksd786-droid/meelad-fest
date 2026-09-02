@@ -8,9 +8,25 @@ export default function Home() {
       <header className="bg-green-950 shadow-lg">
         <div className="max-w-7xl mx-auto flex justify-between items-center p-6">
           <div>
-            <h1 className="text-4xl font-bold">🏫 MUNAFASA 2026</h1>
+           <div className="flex items-center gap-4">
+  <img
+    src="/school-photo.avif"
+    alt="The Global Public School"
+    className="w-16 h-16 rounded-full object-cover border-2 border-white"
+  />
+
+  <div>
+    <h1 className="text-4xl font-bold">
+      MUNAFASA 2026
+    </h1>
+
+    <p className="text-green-300">
+      THE GLOBAL PUBLIC SCHOOL
+    </p>
+  </div>
+</div>
             <p className="text-green-300">
-              Global Public School
+              THE GLOBAL PUBLIC SHOOL 
             </p>
           </div>
 
@@ -45,7 +61,7 @@ export default function Home() {
         </p>
 
         <p className="text-green-300 mt-2">
-          Global Public School
+          THE GLOBAL PUBLIC SHOOL 
         </p>
       </section>
 
@@ -113,7 +129,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-green-950 mt-16 py-6 text-center text-green-300">
-        Â© 2026 Global Public School | MUNAFASA 2026
+        Â© 2026 THE GLOBAL PUBLIC SHOOL  | MUNAFASA 2026
       </footer>
 
     </main>

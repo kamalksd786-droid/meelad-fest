@@ -227,7 +227,7 @@ export default function CertificatesPage() {
                       </h1>
 
                       <p className="text-[clamp(9px,1.25vw,19px)] font-semibold tracking-[0.25em] text-green-900 mt-[0.5%]">
-                        GLOBAL PUBLIC SCHOOL
+                        THE GLOBAL PUBLIC SHOOL 
                       </p>
 
                       {/* CERTIFICATE */}
@@ -363,7 +363,7 @@ export default function CertificatesPage() {
               </h1>
 
               <p className="text-[18px] font-semibold tracking-[0.25em] text-green-900 mt-1">
-                GLOBAL PUBLIC SCHOOL
+                THE GLOBAL PUBLIC SHOOL 
               </p>
 
               <h2 className="text-[50px] font-serif font-bold text-yellow-700 mt-6">

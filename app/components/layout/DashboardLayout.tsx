@@ -4,7 +4,6 @@ import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 
-
 type Props = {
   children: ReactNode;
 };
@@ -13,15 +12,15 @@ export default function DashboardLayout({
   children,
 }: Props) {
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
 
       <Sidebar />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
 
         <Header />
 
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 p-8 bg-gray-100">
           {children}
         </main>
 

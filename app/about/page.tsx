@@ -14,7 +14,7 @@ export default function AboutPage() {
 
           <p className="text-xl text-center text-green-200 mb-10">
             MUNAFASA 2026 is the Inter House Islamic Arts Festival of
-            Global Public School. Students from different categories
+            THE GLOBAL PUBLIC SHOOL . Students from different categories
             participate in various academic, literary, and cultural
             competitions.
           </p>

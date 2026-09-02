@@ -71,7 +71,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="text-green-800 mt-2 font-medium">
-            Global Public School
+            THE GLOBAL PUBLIC SHOOL 
           </p>
 
           <p className="text-gray-600 mt-1">
@@ -189,7 +189,7 @@ export default function LoginPage() {
         {/* FOOTER */}
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          MUNAFASA 2026 • Global Public School
+          MUNAFASA 2026 • THE GLOBAL PUBLIC SHOOL 
         </p>
 
       </div>

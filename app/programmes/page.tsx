@@ -26,7 +26,7 @@ export default function ProgrammesPage() {
     const { data, error } = await supabase
       .from("programmes")
       .select("*")
-      .order("programme_name");
+      .order("id", { ascending: true })
 
     if (error) {
       console.error(error);
@@ -157,7 +157,42 @@ export default function ProgrammesPage() {
 
     loadProgrammes();
   }
+function downloadTemplate() {
+  const headers = [
+    "Programme Name",
+    "Category",
+    "Programme Type",
+    "Duration",
+  ];
 
+  const sampleRow = [
+    "Example Programme",
+    "Junior",
+    "Individual",
+    "5 minutes",
+  ];
+
+  const csvContent = [
+    headers.join(","),
+    sampleRow.join(","),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "programmes-template.csv";
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto">
@@ -196,11 +231,12 @@ export default function ProgrammesPage() {
             </Link>
 
             <button
-              type="button"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-lg font-bold"
-            >
-              📄 Download Template
-            </button>
+  type="button"
+  onClick={downloadTemplate}
+  className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-lg font-bold"
+>
+  📄 Download Template
+</button>
 
           </div>
         </div>
@@ -368,10 +404,13 @@ export default function ProgrammesPage() {
             <thead className="bg-blue-900 text-white">
 
               <tr>
+  <th className="p-4 text-left">
+    Programme ID
+  </th>
 
-                <th className="p-4 text-left">
-                  Programme Name
-                </th>
+  <th className="p-4 text-left">
+    Programme Name
+  </th>
 
                 <th className="p-4 text-left">
                   Category
@@ -401,7 +440,9 @@ export default function ProgrammesPage() {
                   key={programme.id}
                   className="border-b hover:bg-gray-50"
                 >
-
+<td className="p-4 font-bold text-blue-700">
+  {programme.id}
+</td>
                   <td className="p-4 font-semibold">
                     {programme.programme_name}
                   </td>
@@ -447,7 +488,7 @@ export default function ProgrammesPage() {
               {programmes.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="p-8 text-center text-gray-500"
                   >
                     No programmes found.

@@ -15,74 +15,78 @@ export default function PosterTexts({
   programme,
   category,
   team,
-  template,
 }: Props) {
   return (
     <>
-    <Text
-  text={
-    template === "winner-first"
-      ? "🥇 FIRST PRIZE"
-      : template === "winner-second"
-      ? "🥈 SECOND PRIZE"
-      : template === "winner-third"
-      ? "🥉 THIRD PRIZE"
-      : "PARTICIPATION"
-  }
-  x={150}
-  y={560}
-  width={400}
-  align="center"
-  fontSize={24}
-  fontStyle="bold"
-  fill="#C69214"
-/>
+      {/* Top Heading */}
+      <Text
+        text="MUNAFASA 2026"
+        x={100}
+        y={90}
+        width={500}
+        align="center"
+        fontSize={34}
+        fontStyle="bold"
+        fill="#F5D27A"
+      />
+
+      <Text
+        text="THE GLOBAL PUBLIC SHOOL "
+        x={100}
+        y={135}
+        width={500}
+        align="center"
+        fontSize={20}
+        fontStyle="bold"
+        fill="#FFF4D6"
+      />
+
       {/* Student Name */}
       <Text
         text={studentName}
-        x={175}
-        y={610}
-        width={350}
+        x={70}
+        y={565}
+        width={560}
         align="center"
-        fontSize={28}
+        fontSize={32}
         fontStyle="bold"
-        fill="#0F172A"
+        fill="#FFF4D6"
       />
 
       {/* Programme */}
       <Text
-        text={programme}
-        x={300}
-        y={730}
-        width={300}
-        align="left"
-        fontSize={18}
+        text={`Programme: ${programme}`}
+        x={60}
+        y={615}
+        width={580}
+        align="center"
+        fontSize={20}
         fontStyle="bold"
-        fill="#0F172A"
+        fill="#F5D27A"
       />
 
       {/* Category */}
       <Text
-        text={category}
-        x={300}
-        y={785}
-        width={300}
-        align="left"
+        text={`Category: ${category}`}
+        x={60}
+        y={655}
+        width={580}
+        align="center"
         fontSize={18}
         fontStyle="bold"
-        fill="#0F172A"
+        fill="#FFF4D6"
       />
 
       {/* Team */}
       <Text
-        text={team}
-        x={300}
-        y={840}
-        width={300}
-        align="left"
-        fontSize={18}
+        text={team ? `${team.toUpperCase()} TEAM` : ""}
+        x={60}
+        y={695}
+        width={580}
+        align="center"
+        fontSize={22}
         fontStyle="bold"
-        fill="#0F172A"
+        fill="#F5D27A"
       />
     </>
   );

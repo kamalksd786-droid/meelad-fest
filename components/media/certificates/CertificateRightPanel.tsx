@@ -2,11 +2,13 @@
 
 type CertificateData = {
   studentName: string;
+  admissionNo: string;
   programme: string;
   category: string;
   team: string;
   certificateNo: string;
   date: string;
+  achievement: string;
 };
 
 type Props = {
@@ -43,6 +45,18 @@ export default function CertificateRightPanel({
 
         <input
           className="w-full border rounded-lg p-2"
+          placeholder="Admission No."
+          value={certificateData.admissionNo}
+          onChange={(e) =>
+            setCertificateData((prev) => ({
+              ...prev,
+              admissionNo: e.target.value,
+            }))
+          }
+        />
+
+        <input
+          className="w-full border rounded-lg p-2"
           placeholder="Programme"
           value={certificateData.programme}
           onChange={(e) =>
@@ -73,6 +87,18 @@ export default function CertificateRightPanel({
             setCertificateData((prev) => ({
               ...prev,
               team: e.target.value,
+            }))
+          }
+        />
+
+        <input
+          className="w-full border rounded-lg p-2"
+          placeholder="Achievement"
+          value={certificateData.achievement}
+          onChange={(e) =>
+            setCertificateData((prev) => ({
+              ...prev,
+              achievement: e.target.value,
             }))
           }
         />
