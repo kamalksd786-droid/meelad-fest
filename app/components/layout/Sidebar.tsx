@@ -8,6 +8,7 @@ export default function Sidebar() {
   const router = useRouter();
 
   const [role, setRole] = useState<string>("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const [schoolOpen, setSchoolOpen] = useState(true);
   const [eventOpen, setEventOpen] = useState(true);
@@ -33,9 +34,31 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-slate-950 text-white min-h-screen flex flex-col">
+    <>
+      {/* MOBILE MENU BUTTON */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-50 bg-slate-950 text-white px-4 py-3 rounded-lg shadow-lg text-xl"
+      >
+        ☰
+      </button>
 
-      {/* HEADER */}
+      {/* MOBILE SIDEBAR */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/50"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed md:static top-0 left-0 z-50
+          w-64 bg-slate-950 text-white min-h-screen
+          flex flex-col overflow-y-auto
+          transform transition-transform duration-300
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
       <div className="p-6 border-b border-slate-700">
 
         <h1 className="text-2xl font-bold">
@@ -263,6 +286,7 @@ export default function Sidebar() {
         </div>
       )}
 
-    </aside>
+        </aside>
+    </>
   );
 }

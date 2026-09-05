@@ -829,17 +829,35 @@ export default function TeacherDashboardPage() {
 
       {/* HEADER */}
 
-      <div className="bg-green-900 text-white rounded-2xl p-8 mb-8">
+     {/* HEADER */}
 
-        <h1 className="text-3xl font-bold">
-          👨‍🏫 Teacher Dashboard
-        </h1>
+<div className="bg-green-900 text-white rounded-2xl p-8 mb-8">
 
-        <p className="mt-2 text-green-100">
-          Welcome, {teacherName}
-        </p>
+  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
-      </div>
+    <div>
+      <h1 className="text-3xl font-bold">
+        👨‍🏫 Teacher Dashboard
+      </h1>
+
+      <p className="mt-2 text-green-100">
+        Welcome, {teacherName}
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = "/assigned-lists";
+      }}
+      className="bg-white text-green-900 hover:bg-green-50 px-6 py-3 rounded-xl font-bold shadow-lg"
+    >
+      📋 Assigned / Not Assigned Lists
+    </button>
+
+  </div>
+
+</div>
 
       {/* TEAM SELECTION */}
 

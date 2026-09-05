@@ -298,18 +298,31 @@ export default function StudentDirectoryPage() {
 
       {/* HEADER */}
 
-      <div className="mb-8">
+     {/* HEADER */}
 
-        <h1 className="text-4xl font-bold">
-          👨‍🎓 Student Directory
-        </h1>
+<div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-        <p className="text-gray-500 mt-2">
-          View students, teams and programme
-          assignments
-        </p>
+  <div>
+    <h1 className="text-4xl font-bold">
+      👨‍🎓 Student Directory
+    </h1>
 
-      </div>
+    <p className="text-gray-500 mt-2">
+      View students, teams and programme assignments
+    </p>
+  </div>
+
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = "/assigned-lists";
+    }}
+    className="bg-green-700 hover:bg-green-800 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
+  >
+    📋 Assigned / Not Assigned Lists
+  </button>
+
+</div>
 
       {/* SUMMARY */}
 
