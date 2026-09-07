@@ -4,10 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import DashboardLayout from "../components/layout/DashboardLayout";
-
 export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+    const [programmes, setProgrammes] = useState<any[]>([]);
+  const [showProgrammeModal, setShowProgrammeModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState("");
+    const [editingProgrammeId, setEditingProgrammeId] = useState<
+    number | null
+  >(null);
+
+  const [showEditProgrammeModal, setShowEditProgrammeModal] =
+    useState(false);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,15 +39,39 @@ export default function StudentsPage() {
     team: "",
   });
 
-  useEffect(() => {
-    loadStudents();
-  }, []);
+ useEffect(() => {
+  loadStudents();
+  loadProgrammes();
+}, []);
+async function loadProgrammes() {
+  const { data, error } = await supabase
+    .from("programmes")
+    .select("id, programme_name, category, programme_type")
+    .order("programme_name");
 
-  async function loadStudents() {
+  if (error) {
+    console.error("Unable to load programmes:", error);
+    alert("Unable to load programmes.");
+    return;
+  }
+
+  setProgrammes(data || []);
+}
+ async function loadStudents() {
+  // ---------------------------------------------
+  // LOAD ALL STUDENTS IN BATCHES
+  // ---------------------------------------------
+
+  let studentList: any[] = [];
+  let studentFrom = 0;
+  const batchSize = 1000;
+
+  while (true) {
     const { data, error } = await supabase
       .from("students")
       .select("*")
-      .order("student_name");
+      .order("student_name")
+      .range(studentFrom, studentFrom + batchSize - 1);
 
     if (error) {
       console.error(error);
@@ -46,55 +79,77 @@ export default function StudentsPage() {
       return;
     }
 
-    const studentList = data || [];
+    const batch = data || [];
+    studentList = [...studentList, ...batch];
 
-    // Load assigned programmes for all students
-    const admissionNumbers = studentList
-      .map((student) => student.admission_no)
-      .filter(Boolean);
-
-    let registrationData: any[] = [];
-
-    if (admissionNumbers.length > 0) {
-      const {
-        data: registrations,
-        error: registrationError,
-      } = await supabase
-        .from("registrations")
-        .select(
-          "id, admission_no, programme_id, programme_name"
-        )
-        .in("admission_no", admissionNumbers);
-
-      if (registrationError) {
-        console.error(
-          "Unable to load assigned programmes:",
-          registrationError
-        );
-      } else {
-        registrationData = registrations || [];
-      }
+    if (batch.length < batchSize) {
+      break;
     }
 
-    const studentsWithProgrammes = studentList.map(
-      (student) => {
-        const assignedProgrammes = registrationData.filter(
-          (registration) =>
-            String(registration.admission_no) ===
-            String(student.admission_no)
-        );
-
-        return {
-          ...student,
-          assignedProgrammes,
-        };
-      }
-    );
-
-    setStudents(studentsWithProgrammes);
-    setSelectedIds([]);
+    studentFrom += batchSize;
   }
 
+  // ---------------------------------------------
+  // LOAD ALL REGISTRATIONS IN BATCHES
+  // ---------------------------------------------
+
+  let registrationData: any[] = [];
+  let registrationFrom = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("registrations")
+      .select(
+        "id, admission_no, programme_id, programme_name"
+      )
+      .range(
+        registrationFrom,
+        registrationFrom + batchSize - 1
+      );
+
+    if (error) {
+      console.error(
+        "Unable to load assigned programmes:",
+        error
+      );
+      break;
+    }
+
+    const batch = data || [];
+    registrationData = [
+      ...registrationData,
+      ...batch,
+    ];
+
+    if (batch.length < batchSize) {
+      break;
+    }
+
+    registrationFrom += batchSize;
+  }
+
+  // ---------------------------------------------
+  // MATCH PROGRAMMES TO STUDENTS
+  // ---------------------------------------------
+
+  const studentsWithProgrammes = studentList.map(
+    (student) => {
+      const assignedProgrammes = registrationData.filter(
+        (registration) =>
+          String(registration.admission_no).trim() ===
+          String(student.admission_no).trim()
+      );
+
+      return {
+        ...student,
+        assignedProgrammes,
+      };
+    }
+  );
+
+  setStudents(studentsWithProgrammes);
+  setSelectedIds([]);
+}
   const filteredStudents = students.filter(
     (student) =>
       student.student_name
@@ -104,7 +159,145 @@ export default function StudentsPage() {
         ?.toString()
         .includes(search)
   );
+  function openProgrammeModal(student: any) {
+    setSelectedStudent(student);
+    setSelectedProgrammeId("");
+    setShowProgrammeModal(true);
+  }
+     async function assignProgramme() {
+    if (!selectedStudent) {
+      return;
+    }
 
+    if (!selectedProgrammeId) {
+      alert("Please select a programme.");
+      return;
+    }
+
+    const programme = programmes.find(
+      (item) => String(item.id) === selectedProgrammeId
+    );
+
+    if (!programme) {
+      alert("Programme not found.");
+      return;
+    }
+
+    const alreadyAssigned =
+      selectedStudent.assignedProgrammes?.some(
+        (item: any) =>
+          String(item.programme_id) ===
+          String(programme.id)
+      );
+
+    if (alreadyAssigned) {
+      alert(
+        "This programme is already assigned to this student."
+      );
+      return;
+    }
+
+    const { error } = await supabase
+      .from("registrations")
+      .insert({
+        admission_no: String(
+          selectedStudent.admission_no
+        ).trim(),
+        programme_id: programme.id,
+        programme_name: programme.programme_name,
+      });
+
+    if (error) {
+      console.error(error);
+      alert(error.message);
+      return;
+    }
+
+    alert("✅ Programme assigned successfully.");
+
+    setShowProgrammeModal(false);
+    setSelectedStudent(null);
+    setSelectedProgrammeId("");
+
+    await loadStudents();
+  }
+    function openEditProgrammeModal(registration: any, student: any) {
+    setSelectedStudent(student);
+    setEditingProgrammeId(registration.id);
+    setSelectedProgrammeId(
+      String(registration.programme_id || "")
+    );
+    setShowEditProgrammeModal(true);
+  }
+  async function updateProgramme() {
+    if (!editingProgrammeId) {
+      return;
+    }
+
+    if (!selectedProgrammeId) {
+      alert("Please select a programme.");
+      return;
+    }
+
+    const programme = programmes.find(
+      (item) => String(item.id) === selectedProgrammeId
+    );
+
+    if (!programme) {
+      alert("Programme not found.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("registrations")
+      .update({
+        programme_id: programme.id,
+        programme_name: programme.programme_name,
+      })
+      .eq("id", editingProgrammeId);
+
+    if (error) {
+      console.error(error);
+      alert(error.message);
+      return;
+    }
+
+    alert("✅ Programme updated successfully.");
+
+    setShowEditProgrammeModal(false);
+    setEditingProgrammeId(null);
+    setSelectedStudent(null);
+    setSelectedProgrammeId("");
+
+    await loadStudents();
+  }
+  async function deleteProgramme(
+    registration: any,
+    student: any
+  ) {
+    const confirmed = window.confirm(
+      `Are you sure you want to remove "${registration.programme_name}" from ${student.student_name}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("registrations")
+      .delete()
+      .eq("id", registration.id);
+
+    if (error) {
+      console.error(error);
+      alert(error.message);
+      return;
+    }
+
+    alert("✅ Programme removed successfully.");
+
+    await loadStudents();
+  }
   function updateForm(field: string, value: string) {
     setForm((previous) => ({
       ...previous,
@@ -837,40 +1030,64 @@ export default function StudentsPage() {
       </td>
 
       <td className="p-4 align-top text-sm min-w-[320px]">
-        {student.assignedProgrammes?.length > 0 ? (
-          <div className="leading-6 text-gray-800">
-            {student.assignedProgrammes.map(
-              (programme: any, index: number) => (
-                <span key={programme.id}>
-                  {programme.programme_name}
-                  {index <
-                    student.assignedProgrammes.length - 1 && (
-                    <span className="mx-1 text-gray-400">
-                      •
-                    </span>
-                  )}
-                </span>
-              )
-            )}
-          </div>
-        ) : (
-          <span className="text-gray-400">
-            No programmes assigned
-          </span>
-        )}
-      </td>
+  {student.assignedProgrammes?.length > 0 ? (
+    <div className="space-y-2">
+      {student.assignedProgrammes.map(
+        (programme: any) => (
+          <div
+            key={programme.id}
+            className="flex items-center justify-between gap-2 border-b pb-2"
+          >
+            <span className="font-medium text-gray-800">
+              {programme.programme_name}
+            </span>
 
-      <td className="p-4 whitespace-nowrap">
-        {student.assignedProgrammes?.length > 0 ? (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
-            ✓ Assigned
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-500">
-            Not Assigned
-          </span>
-        )}
-      </td>
+            <div className="flex gap-2">
+             <button
+  type="button"
+  onClick={() =>
+    openEditProgrammeModal(programme, student)
+  }
+  className="text-blue-600 hover:text-blue-800 font-semibold"
+>
+  ✏️ Edit
+</button>
+              <button
+  type="button"
+  onClick={() => deleteProgramme(programme, student)}
+  className="text-red-600 hover:text-red-800 font-semibold"
+>
+  🗑️ Delete
+</button>
+            </div>
+          </div>
+        )
+      )}
+
+      <button
+        type="button"
+        onClick={() => openProgrammeModal(student)}
+        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold"
+      >
+        ➕ Assign Programme
+      </button>
+    </div>
+  ) : (
+    <div>
+      <span className="text-gray-400 block mb-2">
+        No programmes assigned
+      </span>
+
+      <button
+        type="button"
+        onClick={() => openProgrammeModal(student)}
+        className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold"
+      >
+        ➕ Assign Programme
+      </button>
+    </div>
+  )}
+</td>
 
       <td className="p-4 text-center whitespace-nowrap">
         <button
@@ -909,6 +1126,197 @@ export default function StudentsPage() {
         </div>
 
       </div>
+              {showProgrammeModal && selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  ➕ Assign Programme
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProgrammeModal(false);
+                    setSelectedStudent(null);
+                    setSelectedProgrammeId("");
+                  }}
+                  className="text-red-600 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-5 rounded-lg bg-gray-50 p-4">
+                <p className="font-semibold">
+                  Student: {selectedStudent.student_name}
+                </p>
+
+                <p className="text-gray-600 mt-1">
+                  Admission No: {selectedStudent.admission_no}
+                </p>
+
+                <p className="text-gray-600 mt-1">
+                  Category: {selectedStudent.category}
+                </p>
+              </div>
+
+              <label className="block font-semibold mb-2">
+                Select Programme
+              </label>
+
+              <select
+                value={selectedProgrammeId}
+                onChange={(e) =>
+                  setSelectedProgrammeId(e.target.value)
+                }
+                className="w-full border rounded-lg p-3 mb-6"
+              >
+                <option value="">
+                  Select Programme
+                </option>
+
+                {programmes
+  .filter(
+    (programme) =>
+      String(programme.category).trim().toLowerCase() ===
+      String(selectedStudent.category).trim().toLowerCase()
+  )
+                  .map((programme) => (
+                    <option
+                      key={programme.id}
+                      value={programme.id}
+                    >
+                      {programme.programme_name} —{" "}
+                      {programme.programme_type}
+                    </option>
+                  ))}
+              </select>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={assignProgramme}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-bold"
+                >
+                  ✅ Assign
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProgrammeModal(false);
+                    setSelectedStudent(null);
+                    setSelectedProgrammeId("");
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+                {showEditProgrammeModal && selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  ✏️ Edit Programme
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditProgrammeModal(false);
+                    setEditingProgrammeId(null);
+                    setSelectedStudent(null);
+                    setSelectedProgrammeId("");
+                  }}
+                  className="text-red-600 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-5 rounded-lg bg-gray-50 p-4">
+                <p className="font-semibold">
+                  Student: {selectedStudent.student_name}
+                </p>
+
+                <p className="text-gray-600 mt-1">
+                  Admission No: {selectedStudent.admission_no}
+                </p>
+
+                <p className="text-gray-600 mt-1">
+                  Category: {selectedStudent.category}
+                </p>
+              </div>
+
+              <label className="block font-semibold mb-2">
+                Select New Programme
+              </label>
+
+              <select
+                value={selectedProgrammeId}
+                onChange={(e) =>
+                  setSelectedProgrammeId(e.target.value)
+                }
+                className="w-full border rounded-lg p-3 mb-6"
+              >
+                <option value="">
+                  Select Programme
+                </option>
+
+                {programmes
+                  .filter(
+                    (programme) =>
+                      String(programme.category)
+                        .trim()
+                        .toLowerCase() ===
+                      String(selectedStudent.category)
+                        .trim()
+                        .toLowerCase()
+                  )
+                  .map((programme) => (
+                    <option
+                      key={programme.id}
+                      value={programme.id}
+                    >
+                      {programme.programme_name} —{" "}
+                      {programme.programme_type}
+                    </option>
+                  ))}
+              </select>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={updateProgramme}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-bold"
+                >
+                  💾 Update
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditProgrammeModal(false);
+                    setEditingProgrammeId(null);
+                    setSelectedStudent(null);
+                    setSelectedProgrammeId("");
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
     </DashboardLayout>
   );
 }

@@ -130,22 +130,54 @@ export default function RegistrationsPage() {
       );
     }
 
-    const {
-      data: registrationData,
-      error: registrationError,
-    } = await supabase
-      .from("registrations")
-      .select("*")
-      .order("id", {
-        ascending: false,
-      });
+    // ==========================================
+// LOAD ALL REGISTRATIONS IN BATCHES
+// ==========================================
 
-    if (registrationError) {
-      console.error(
-        "Registration loading error:",
-        registrationError
-      );
-    }
+const allRegistrations: Registration[] = [];
+
+const batchSize = 1000;
+let from = 0;
+
+while (true) {
+  const {
+    data: batchData,
+    error: batchError,
+  } = await supabase
+    .from("registrations")
+    .select("*")
+    .order("id", {
+      ascending: false,
+    })
+    .range(from, from + batchSize - 1);
+
+  if (batchError) {
+    console.error(
+      "Registration loading error:",
+      batchError
+    );
+    break;
+  }
+
+  if (!batchData || batchData.length === 0) {
+    break;
+  }
+
+  allRegistrations.push(
+    ...(batchData as Registration[])
+  );
+
+  if (batchData.length < batchSize) {
+    break;
+  }
+
+  from += batchSize;
+}
+
+console.log(
+  "Total registrations loaded:",
+  allRegistrations.length
+);
 
     const studentMap = new Map(
       (studentData || []).map((student) => [
@@ -154,7 +186,7 @@ export default function RegistrationsPage() {
       ])
     );
 
-    const enrichedRegistrations = (registrationData || []).map(
+    const enrichedRegistrations = allRegistrations.map(
       (registration) => {
         const student = studentMap.get(
           String(registration.admission_no)
@@ -174,10 +206,10 @@ export default function RegistrationsPage() {
 
     // Remove selections that no longer exist
     const currentIds = new Set(
-      (registrationData || []).map(
-        (registration) => registration.id
-      )
-    );
+  allRegistrations.map(
+    (registration) => registration.id
+  )
+);
 
     setSelectedRegistrations((previous) =>
       previous.filter((id) => currentIds.has(id))
