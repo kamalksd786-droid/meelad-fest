@@ -356,7 +356,23 @@ export default function ScoreEntryPage() {
       position: index + 1,
     }));
   }
+function printWinnerSheet() {
+  if (!selectedProgramme) {
+    alert("Please select a programme first.");
+    return;
+  }
 
+  document.body.classList.add("print-winner-sheet");
+
+  const cleanup = () => {
+    document.body.classList.remove("print-winner-sheet");
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
+
+  window.print();
+}
   // -----------------------------
   // PRINT RESULT
   // -----------------------------
@@ -523,7 +539,13 @@ export default function ScoreEntryPage() {
                 >
                   🖨️ Print Judge Sheet
                 </button>
-
+<button
+  type="button"
+  onClick={printWinnerSheet}
+  className="bg-purple-700 hover:bg-purple-800 text-white font-bold px-6 py-3 rounded-lg"
+>
+  🏆 Print Winner Sheet
+</button>
                 <button
                   type="button"
                   onClick={saveScores}
@@ -1047,7 +1069,89 @@ export default function ScoreEntryPage() {
       {/* =====================================================
           PRINT STYLES
       ===================================================== */}
+        {/* PRINTABLE WINNER SHEET */}
+        {selectedProgramme && (
+          <section className="winner-sheet-print">
+            <div className="winner-sheet-header">
+              <h1>MUNAFASA 2026</h1>
+              <h2>WINNER SHEET</h2>
+            </div>
 
+            <div className="winner-details">
+              <div>
+                <strong>Programme ID:</strong>{" "}
+                {selectedProgrammeData?.programme_code || ""}
+              </div>
+
+              <div>
+                <strong>Programme Name:</strong>{" "}
+                {selectedProgrammeData?.programme_name || ""}
+              </div>
+
+              <div>
+                <strong>Category:</strong>{" "}
+                {participants[0]?.category || ""}
+              </div>
+
+              <div>
+                <strong>Programme Type:</strong>{" "}
+                {participants[0]?.participant_type || ""}
+              </div>
+
+              <div>
+                <strong>Date:</strong>{" "}
+                {new Date().toLocaleDateString("en-IN")}
+              </div>
+            </div>
+
+            <table className="winner-table">
+              <thead>
+                <tr>
+                  <th>1st Place</th>
+                  <th>2nd Place</th>
+                  <th>3rd Place</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr>
+                  <td>
+                    <div className="winner-label">
+                      Chest No.
+                    </div>
+                    <div className="winner-line"></div>
+                  </td>
+
+                  <td>
+                    <div className="winner-label">
+                      Chest No.
+                    </div>
+                    <div className="winner-line"></div>
+                  </td>
+
+                  <td>
+                    <div className="winner-label">
+                      Chest No.
+                    </div>
+                    <div className="winner-line"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="winner-footer">
+              <div>
+                <strong>Judge Name:</strong>
+                <span className="winner-signature-line"></span>
+              </div>
+
+              <div>
+                <strong>Judge Signature:</strong>
+                <span className="winner-signature-line"></span>
+              </div>
+            </div>
+          </section>
+        )}
       <style jsx global>{`
 
         /* =========================================
@@ -1058,14 +1162,126 @@ export default function ScoreEntryPage() {
         .result-print {
           display: none;
         }
+        .winner-sheet-print {
+          display: none;
+        }
 
+        body.print-winner-sheet .judge-sheet-print {
+          display: none !important;
+        }
+
+        body.print-winner-sheet .winner-sheet-print {
+          display: block !important;
+        }
 
         /* =========================================
            JUDGE SHEET PRINT
         ========================================= */
 
         @media print {
+          body.print-winner-sheet * {
+            visibility: visible !important;
+          }
 
+          body.print-winner-sheet .winner-sheet-print {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white;
+            color: black;
+            padding: 10px;
+          }
+
+          body.print-winner-sheet .judge-sheet-print {
+            display: none !important;
+          }
+
+          body.print-winner-sheet > * {
+            background: white !important;
+          }
+                      .winner-sheet-header {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+
+          .winner-sheet-header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+          }
+
+          .winner-sheet-header h2 {
+            margin: 6px 0 0;
+            font-size: 19px;
+            font-weight: 700;
+          }
+
+          .winner-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 25px;
+            border: 1px solid #222;
+            padding: 14px;
+            margin-bottom: 25px;
+            font-size: 13px;
+          }
+
+          .winner-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+
+          .winner-table th,
+          .winner-table td {
+            border: 1px solid #222;
+            text-align: center;
+          }
+
+          .winner-table th {
+            font-size: 16px;
+            font-weight: 700;
+            padding: 14px;
+            background: #f0f0f0 !important;
+          }
+
+          .winner-table td {
+            height: 150px;
+            padding: 20px;
+            vertical-align: middle;
+          }
+
+          .winner-label {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 25px;
+          }
+
+          .winner-line {
+            width: 75%;
+            margin: 0 auto;
+            border-bottom: 1px solid #222;
+            height: 30px;
+          }
+
+          .winner-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 45px;
+            font-size: 13px;
+          }
+
+          .winner-signature-line {
+            display: inline-block;
+            width: 180px;
+            border-bottom: 1px solid #222;
+            margin-left: 10px;
+            height: 18px;
+            vertical-align: bottom;
+          }
           body {
             background: white !important;
           }

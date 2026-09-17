@@ -98,11 +98,17 @@ export default function ResultEntryPage() {
   // LOAD RESULTS
   // =========================================================
 
-  async function loadResults() {
+ async function loadResults() {
+  const allResults: Result[] = [];
+  const batchSize = 1000;
+
+  // Load ALL results in batches
+  for (let from = 0; ; from += batchSize) {
     const { data, error } = await supabase
       .from("results")
       .select("*")
-      .order("id", { ascending: false });
+      .order("id", { ascending: false })
+      .range(from, from + batchSize - 1);
 
     if (error) {
       console.error("Result loading error:", error);
@@ -110,53 +116,81 @@ export default function ResultEntryPage() {
       return;
     }
 
-    const resultRows = (data || []) as Result[];
+    const batch = (data || []) as Result[];
+    allResults.push(...batch);
 
-    // Chest No. is stored in the students table, not in results.
-    // We only fetch the students that appear in the result history.
-    const admissionNumbers = Array.from(
-      new Set(
-        resultRows
-          .map((result) => result.admission_no)
-          .filter(Boolean)
-      )
-    );
-
-    if (admissionNumbers.length === 0) {
-      setResults(resultRows);
-      return;
+    if (batch.length < batchSize) {
+      break;
     }
+  }
+
+  const resultRows = allResults;
+
+  // Get unique admission numbers only for internal lookup
+  const admissionNumbers = Array.from(
+    new Set(
+      resultRows
+        .map((result) =>
+          String(result.admission_no ?? "").trim()
+        )
+        .filter(Boolean)
+    )
+  );
+
+  if (admissionNumbers.length === 0) {
+    setResults(resultRows);
+    return;
+  }
+
+  const chestMap = new Map<string, string>();
+
+  // Load student chest numbers in batches
+  for (
+    let from = 0;
+    from < admissionNumbers.length;
+    from += batchSize
+  ) {
+    const admissionBatch = admissionNumbers.slice(
+      from,
+      from + batchSize
+    );
 
     const { data: studentsData, error: studentsError } =
       await supabase
         .from("students")
         .select("admission_no, chest_no")
-        .in("admission_no", admissionNumbers);
+        .in("admission_no", admissionBatch);
 
     if (studentsError) {
-      console.error("Student Chest No loading error:", studentsError);
-      // Keep the results visible even if the chest-number lookup fails.
+      console.error(
+        "Student Chest No loading error:",
+        studentsError
+      );
+
       setResults(resultRows);
       return;
     }
 
-    const chestMap = new Map<string, string>();
-
-    (studentsData || []).forEach((student) => {
+    (studentsData || []).forEach((item) => {
       chestMap.set(
-        String(student.admission_no),
-        String(student.chest_no ?? "")
+        String(item.admission_no),
+        String(item.chest_no ?? "")
       );
     });
-
-    const resultsWithChest = resultRows.map((result) => ({
-      ...result,
-      chest_no: chestMap.get(String(result.admission_no)) || "",
-    }));
-
-    setResults(resultsWithChest);
   }
 
+  const resultsWithChest = resultRows.map((result) => ({
+    ...result,
+    chest_no:
+      result.chest_no ||
+      chestMap.get(
+        String(result.admission_no)
+      ) ||
+      "",
+  }));
+
+  setResults(resultsWithChest);
+}
   // =========================================================
   // GET SELECTED PROGRAMME
   // =========================================================
@@ -179,32 +213,64 @@ export default function ResultEntryPage() {
   // =========================================================
 
   async function searchStudent(value: string) {
-    setSearch(value);
+  setSearch(value);
 
-    if (!value.trim()) {
-      setStudent(null);
-      return;
-    }
+  const searchValue = value.trim();
 
-    const { data, error } = await supabase
-      .from("students")
-      .select(
-        "admission_no, chest_no, student_name, team"
-      )
-      .or(
-        `admission_no.eq.${value},chest_no.eq.${value}`
-      )
-      .maybeSingle();
-
-    if (error) {
-      console.error(error);
-      setStudent(null);
-      return;
-    }
-
-    setStudent(data || null);
+  if (!searchValue) {
+    setStudent(null);
+    return;
   }
 
+  // Search by Chest No. first
+  const chestResult = await supabase
+    .from("students")
+    .select(
+      "admission_no, chest_no, student_name, team"
+    )
+    .eq("chest_no", searchValue)
+    .limit(1)
+    .maybeSingle();
+
+  if (chestResult.error) {
+    console.error(
+      "Chest No. search error:",
+      chestResult.error
+    );
+    setStudent(null);
+    return;
+  }
+
+  if (chestResult.data) {
+    setStudent(chestResult.data);
+    return;
+  }
+
+  // If Chest No. not found, search by Student Name
+  const nameResult = await supabase
+    .from("students")
+    .select(
+      "admission_no, chest_no, student_name, team"
+    )
+    .ilike(
+      "student_name",
+      `%${searchValue}%`
+    )
+    .order("student_name")
+    .limit(1)
+    .maybeSingle();
+
+  if (nameResult.error) {
+    console.error(
+      "Student Name search error:",
+      nameResult.error
+    );
+    setStudent(null);
+    return;
+  }
+
+  setStudent(nameResult.data || null);
+}
   // =========================================================
   // SEARCH PODIUM STUDENT
   // =========================================================
@@ -225,7 +291,9 @@ export default function ResultEntryPage() {
     setThirdSearch(value);
   }
 
-  if (!value.trim()) {
+  const searchValue = value.trim();
+
+  if (!searchValue) {
     if (position === "First") {
       setFirstStudent(null);
     }
@@ -241,29 +309,40 @@ export default function ResultEntryPage() {
     return;
   }
 
-  // First search by Admission No.
+  // Search by Chest No.
   let { data, error } = await supabase
     .from("students")
-    .select("admission_no, chest_no, student_name, team")
-    .eq("admission_no", value.trim())
+    .select(
+      "admission_no, chest_no, student_name, team"
+    )
+    .eq("chest_no", searchValue)
     .limit(1)
     .maybeSingle();
 
-  // If not found, search by Chest No.
+  // If Chest No. not found, search by Student Name
   if (!data && !error) {
-    const result = await supabase
+    const nameResult = await supabase
       .from("students")
-      .select("admission_no, chest_no, student_name, team")
-      .eq("chest_no", value.trim())
+      .select(
+        "admission_no, chest_no, student_name, team"
+      )
+      .ilike(
+        "student_name",
+        `%${searchValue}%`
+      )
+      .order("student_name")
       .limit(1)
       .maybeSingle();
 
-    data = result.data;
-    error = result.error;
+    data = nameResult.data;
+    error = nameResult.error;
   }
 
   if (error) {
-    console.error("Podium student search error:", error);
+    console.error(
+      "Podium student search error:",
+      error
+    );
 
     if (position === "First") {
       setFirstStudent(null);
@@ -281,7 +360,9 @@ export default function ResultEntryPage() {
   }
 
   if (!data) {
-    alert("Student not found. Please check the Admission No. or Chest No.");
+    alert(
+      "Student not found. Please check the Chest No. or Student Name."
+    );
 
     if (position === "First") {
       setFirstStudent(null);
@@ -900,7 +981,236 @@ export default function ResultEntryPage() {
   // PRINT PROGRAMME RESULT
   // A4 / A5
   // =========================================================
+function printWinnerSheet() {
+  const programme = getSelectedProgramme();
 
+  if (!programme) {
+    alert("Please select a programme first.");
+    return;
+  }
+
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=900,height=700"
+  );
+
+  if (!printWindow) {
+    alert("Please allow pop-ups for this website.");
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Winner Sheet - ${escapeHtml(
+          programme.programme_name
+        )}</title>
+
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            color: #111;
+            background: white;
+          }
+
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+
+          .school {
+            font-size: 24px;
+            font-weight: bold;
+          }
+
+          .event {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 8px;
+          }
+
+          .title {
+            font-size: 26px;
+            font-weight: bold;
+            margin-top: 18px;
+          }
+
+          .programme {
+            border: 2px solid #222;
+            padding: 15px;
+            margin-bottom: 35px;
+            text-align: center;
+          }
+
+          .programme-name {
+            font-size: 21px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
+          .programme-details {
+            font-size: 14px;
+          }
+
+          .winner-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+
+          .winner-table th,
+          .winner-table td {
+            border: 2px solid #222;
+            text-align: center;
+          }
+
+          .winner-table th {
+            font-size: 20px;
+            padding: 18px 10px;
+          }
+
+          .winner-table td {
+            height: 230px;
+            vertical-align: middle;
+            padding: 25px;
+          }
+
+          .chest-label {
+            font-size: 17px;
+            font-weight: bold;
+            margin-bottom: 35px;
+          }
+
+          .chest-line {
+            width: 75%;
+            margin: 0 auto;
+            border-bottom: 2px solid #222;
+            height: 35px;
+          }
+
+          .footer {
+            margin-top: 55px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+          }
+
+          .signature {
+            width: 220px;
+            border-bottom: 1px solid #222;
+            display: inline-block;
+            margin-left: 8px;
+          }
+
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+
+        <div class="header">
+          <div class="school">
+            THE GLOBAL PUBLIC SCHOOL
+          </div>
+
+          <div class="event">
+            MUNAFASA 2026
+          </div>
+
+          <div class="title">
+            WINNER SHEET
+          </div>
+        </div>
+
+        <div class="programme">
+          <div class="programme-name">
+            ${escapeHtml(programme.programme_name)}
+          </div>
+
+          <div class="programme-details">
+            Programme ID: ${escapeHtml(programme.id)}
+            &nbsp;&nbsp; | &nbsp;&nbsp;
+            Category: ${escapeHtml(programme.category)}
+          </div>
+        </div>
+
+        <table class="winner-table">
+          <thead>
+            <tr>
+              <th>1st Place</th>
+              <th>2nd Place</th>
+              <th>3rd Place</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td>
+                <div class="chest-label">
+                  Chest No.
+                </div>
+                <div class="chest-line"></div>
+              </td>
+
+              <td>
+                <div class="chest-label">
+                  Chest No.
+                </div>
+                <div class="chest-line"></div>
+              </td>
+
+              <td>
+                <div class="chest-label">
+                  Chest No.
+                </div>
+                <div class="chest-line"></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div>
+            Judge Name:
+            <span class="signature"></span>
+          </div>
+
+          <div>
+            Judge Signature:
+            <span class="signature"></span>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function () {
+            window.focus();
+            window.print();
+          };
+        </script>
+
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+}
   function printProgrammeResult(
     size: "A4" | "A5"
   ) {
@@ -983,12 +1293,6 @@ export default function ResultEntryPage() {
               <td>
                 ${escapeHtml(
                   result.student_name
-                )}
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  result.admission_no
                 )}
               </td>
 
@@ -1153,10 +1457,9 @@ export default function ResultEntryPage() {
             <thead>
               <tr>
                 <th>Position</th>
-                <th>Student Name</th>
-                <th>Admission No</th>
-                <th>Chest No</th>
-                <th>Team</th>
+<th>Student Name</th>
+<th>Chest No</th>
+<th>Team</th>
               </tr>
             </thead>
 
@@ -1183,7 +1486,266 @@ export default function ResultEntryPage() {
 
     printWindow.document.close();
   }
+function printAllEnteredResults() {
+  const enteredResults = results.filter(
+    (result) =>
+      result.position === "First" ||
+      result.position === "Second" ||
+      result.position === "Third"
+  );
 
+  if (enteredResults.length === 0) {
+    alert("No results have been entered yet.");
+    return;
+  }
+
+  const programmeIds = Array.from(
+    new Set(
+      enteredResults.map(
+        (result) => result.programme_id
+      )
+    )
+  );
+
+  const sections = programmeIds
+    .map((programmeId) => {
+      const programme = programmes.find(
+        (item) => item.id === programmeId
+      );
+
+      const programmeResults = enteredResults
+        .filter(
+          (result) =>
+            result.programme_id === programmeId
+        )
+        .sort((a, b) => {
+          const order: Record<string, number> = {
+            First: 1,
+            Second: 2,
+            Third: 3,
+          };
+
+          return (
+            (order[a.position] || 99) -
+            (order[b.position] || 99)
+          );
+        });
+
+      if (!programmeResults.length) {
+        return "";
+      }
+
+      const rows = programmeResults
+        .map(
+          (result) => `
+            <tr>
+              <td class="position">
+                ${escapeHtml(result.position)}
+              </td>
+
+              <td>
+                ${escapeHtml(result.student_name)}
+              </td>
+
+              <td>
+                ${escapeHtml(result.chest_no || "-")}
+              </td>
+
+              <td>
+                ${escapeHtml(result.team || "-")}
+              </td>
+            </tr>
+          `
+        )
+        .join("");
+
+      return `
+        <section class="programme-section">
+          <div class="programme-header">
+            <div class="programme-name">
+              ${escapeHtml(
+                programme?.programme_name ||
+                programmeResults[0].programme_name
+              )}
+            </div>
+
+            <div class="details">
+              Programme ID:
+              ${escapeHtml(programmeId)}
+              &nbsp; | &nbsp;
+              Category:
+              ${escapeHtml(
+                programme?.category ||
+                programmeResults[0].category ||
+                "-"
+              )}
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Student Name</th>
+                <th>Chest No</th>
+                <th>Team</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </section>
+      `;
+    })
+    .join("");
+
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1000,height=800"
+  );
+
+  if (!printWindow) {
+    alert(
+      "Please allow pop-ups for this website."
+    );
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>MUNAFASA 2026 - All Results</title>
+
+        <style>
+          @page {
+            size: A4;
+            margin: 12mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            color: #111;
+            background: white;
+          }
+
+          .main-header {
+            text-align: center;
+            border-bottom: 3px solid #111;
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+          }
+
+          .school {
+            font-size: 22px;
+            font-weight: bold;
+          }
+
+          .event {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+          }
+
+          .title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 10px;
+          }
+
+          .programme-section {
+            page-break-inside: avoid;
+            margin-bottom: 30px;
+          }
+
+          .programme-header {
+            border: 2px solid #222;
+            padding: 12px;
+            text-align: center;
+            margin-bottom: 10px;
+          }
+
+          .programme-name {
+            font-size: 18px;
+            font-weight: bold;
+          }
+
+          .details {
+            font-size: 13px;
+            margin-top: 6px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          th {
+            background: #111;
+            color: white;
+            border: 1px solid #222;
+            padding: 8px;
+            font-size: 12px;
+          }
+
+          td {
+            border: 1px solid #222;
+            padding: 9px;
+            font-size: 12px;
+          }
+
+          .position {
+            width: 18%;
+            text-align: center;
+            font-weight: bold;
+          }
+
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="main-header">
+          <div class="school">
+            THE GLOBAL PUBLIC SCHOOL
+          </div>
+
+          <div class="event">
+            MUNAFASA 2026
+          </div>
+
+          <div class="title">
+            ALL ENTERED RESULTS
+          </div>
+        </div>
+
+        ${sections}
+
+        <script>
+          window.onload = function () {
+            window.focus();
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+}
   // =========================================================
   // FILTER PROGRAMMES
   // =========================================================
@@ -1462,7 +2024,7 @@ export default function ResultEntryPage() {
 
               <input
                 className="border rounded-lg w-full p-3 mb-3"
-                placeholder="Chest No / Admission No"
+                placeholder="Search Chest No or Student Name"
                 value={search}
                 onChange={(e) =>
                   searchStudent(
@@ -1983,7 +2545,13 @@ export default function ResultEntryPage() {
               {/* ==================================================
                   PRINT BUTTONS
               ================================================== */}
-
+<button
+  type="button"
+  onClick={printWinnerSheet}
+  className="bg-purple-700 hover:bg-purple-800 text-white px-5 py-3 rounded-lg font-bold mb-4"
+>
+  🏆 Print Winner Sheet
+</button>
               {selectedProgrammeResults.length >
                 0 && (
 
@@ -2022,7 +2590,13 @@ export default function ResultEntryPage() {
                     >
                       🖨️ Print Result — A5
                     </button>
-
+<button
+  type="button"
+  onClick={printAllEnteredResults}
+  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg font-bold"
+>
+  📄 Print All Results / PDF
+</button>
                   </div>
 
                 </div>

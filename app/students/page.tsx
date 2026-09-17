@@ -549,11 +549,11 @@ async function loadProgrammes() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-8">
 
           <div>
-            <h1 className="text-4xl font-bold">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
               👨 Students Management
             </h1>
 
-            <p className="text-gray-500 mt-2">
+            <p className="text-slate-500 mt-2">
               Total Students: {students.length}
             </p>
           </div>
@@ -566,14 +566,14 @@ async function loadProgrammes() {
                 resetForm();
                 setShowAddForm(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-bold"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold shadow-sm transition"
             >
               ➕ Add Student
             </button>
 
             <Link
               href="/import-students"
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-bold"
+              className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold shadow-sm transition"
             >
               📥 Bulk Upload
             </Link>
@@ -612,7 +612,7 @@ async function loadProgrammes() {
 
     URL.revokeObjectURL(url);
   }}
-  className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-lg font-bold"
+  className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-3 rounded-xl font-semibold shadow-sm transition"
 >
   📄 Download Template
 </button>
@@ -623,7 +623,7 @@ async function loadProgrammes() {
         {/* ADD / EDIT FORM */}
 
         {showAddForm && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
 
             <div className="flex justify-between items-center mb-6">
 
@@ -659,7 +659,7 @@ async function loadProgrammes() {
                       e.target.value
                     )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter student name"
                 />
               </div>
@@ -678,7 +678,7 @@ async function loadProgrammes() {
                       e.target.value
                     )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter admission number"
                 />
               </div>
@@ -697,7 +697,7 @@ async function loadProgrammes() {
                       e.target.value
                     )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter chest number"
                 />
               </div>
@@ -716,7 +716,7 @@ async function loadProgrammes() {
                       e.target.value
                     )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Example: 10A"
                 />
               </div>
@@ -734,7 +734,7 @@ async function loadProgrammes() {
       e.target.value
     )
   }
-  className="w-full border rounded-lg p-3"
+  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 >
   <option value="">
     Select Category
@@ -773,7 +773,7 @@ async function loadProgrammes() {
       e.target.value
     )
   }
-  className="w-full border rounded-lg p-3"
+  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 >
   <option value="">
     Select Gender
@@ -805,7 +805,7 @@ async function loadProgrammes() {
       e.target.value
     )
   }
-  className="w-full border rounded-lg p-3"
+  className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 >
   <option value="">
     Select Team
@@ -835,7 +835,7 @@ async function loadProgrammes() {
                 type="button"
                 onClick={saveStudent}
                 disabled={saving}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-bold"
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-8 py-3 rounded-xl font-semibold shadow-sm transition"
               >
                 {saving
                   ? "Saving..."
@@ -847,7 +847,7 @@ async function loadProgrammes() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-bold"
+                className="bg-slate-600 hover:bg-slate-700 text-white px-8 py-3 rounded-xl font-semibold transition"
               >
                 Cancel
               </button>
@@ -866,7 +866,7 @@ async function loadProgrammes() {
           <input
             type="text"
             placeholder="🔍 Search by student name or admission number..."
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={search}
             onChange={(e) =>
               setSearch(e.target.value)
@@ -877,7 +877,7 @@ async function loadProgrammes() {
 
         {/* BULK ACTION BAR */}
 
-        <div className="bg-white rounded-xl shadow p-4 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
           <label className="flex items-center gap-3 font-semibold cursor-pointer">
 
@@ -901,7 +901,7 @@ async function loadProgrammes() {
               deleting ||
               selectedIds.length === 0
             }
-            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold"
+            className="bg-red-500 hover:bg-red-600 disabled:bg-slate-300 text-white px-6 py-3 rounded-xl font-semibold transition"
           >
             {deleting
               ? "Deleting..."
@@ -916,11 +916,11 @@ async function loadProgrammes() {
 
         {/* STUDENT TABLE */}
 
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
 
           <table className="w-full">
 
-            <thead className="bg-blue-900 text-white">
+            <thead className="bg-slate-900 text-white">
 
               <tr>
 
@@ -933,43 +933,43 @@ async function loadProgrammes() {
                   />
                 </th>
 
-               <th className="p-4 text-left">
+               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Admission No
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Student Name
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Class
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Division
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Category
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Gender
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Team
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Chest No.
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Assigned Programme(s)
 </th>
 
-<th className="p-4 text-left">
+<th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
   Status
 </th>
 
@@ -984,7 +984,7 @@ async function loadProgrammes() {
   {filteredStudents.map((student) => (
     <tr
       key={student.id}
-      className={`border-b hover:bg-gray-50 ${
+      className={`border-b border-slate-100 hover:bg-slate-50 transition ${
         selectedIds.includes(student.id) ? "bg-red-50" : ""
       }`}
     >
@@ -1001,7 +1001,7 @@ async function loadProgrammes() {
         {student.admission_no}
       </td>
 
-      <td className="p-4 font-semibold">
+      <td className="p-4 font-semibold text-slate-800">
         {student.student_name}
       </td>
 
@@ -1048,7 +1048,7 @@ async function loadProgrammes() {
   onClick={() =>
     openEditProgrammeModal(programme, student)
   }
-  className="text-blue-600 hover:text-blue-800 font-semibold"
+  className="text-indigo-600 hover:text-indigo-800 font-semibold"
 >
   ✏️ Edit
 </button>
@@ -1067,21 +1067,21 @@ async function loadProgrammes() {
       <button
         type="button"
         onClick={() => openProgrammeModal(student)}
-        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold"
+        className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-semibold transition"
       >
         ➕ Assign Programme
       </button>
     </div>
   ) : (
     <div>
-      <span className="text-gray-400 block mb-2">
+      <span className="text-slate-400 block mb-2">
         No programmes assigned
       </span>
 
       <button
         type="button"
         onClick={() => openProgrammeModal(student)}
-        className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold"
+        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-semibold transition"
       >
         ➕ Assign Programme
       </button>
@@ -1093,7 +1093,7 @@ async function loadProgrammes() {
         <button
           type="button"
           onClick={() => editStudent(student)}
-          className="text-blue-600 hover:text-blue-800 mr-4 font-semibold"
+          className="text-indigo-600 hover:text-indigo-800 mr-4 font-semibold"
         >
           ✏️ Edit
         </button>
@@ -1128,7 +1128,7 @@ async function loadProgrammes() {
       </div>
               {showProgrammeModal && selectedStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
               
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">
@@ -1148,16 +1148,16 @@ async function loadProgrammes() {
                 </button>
               </div>
 
-              <div className="mb-5 rounded-lg bg-gray-50 p-4">
+              <div className="mb-5 rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p className="font-semibold">
                   Student: {selectedStudent.student_name}
                 </p>
 
-                <p className="text-gray-600 mt-1">
+                <p className="text-slate-500 mt-1">
                   Admission No: {selectedStudent.admission_no}
                 </p>
 
-                <p className="text-gray-600 mt-1">
+                <p className="text-slate-500 mt-1">
                   Category: {selectedStudent.category}
                 </p>
               </div>
@@ -1198,7 +1198,7 @@ async function loadProgrammes() {
                 <button
                   type="button"
                   onClick={assignProgramme}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-bold"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold transition"
                 >
                   ✅ Assign
                 </button>
@@ -1210,7 +1210,7 @@ async function loadProgrammes() {
                     setSelectedStudent(null);
                     setSelectedProgrammeId("");
                   }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg font-bold"
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition"
                 >
                   Cancel
                 </button>
@@ -1220,7 +1220,7 @@ async function loadProgrammes() {
         )}
                 {showEditProgrammeModal && selectedStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
 
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">
@@ -1241,16 +1241,16 @@ async function loadProgrammes() {
                 </button>
               </div>
 
-              <div className="mb-5 rounded-lg bg-gray-50 p-4">
+              <div className="mb-5 rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p className="font-semibold">
                   Student: {selectedStudent.student_name}
                 </p>
 
-                <p className="text-gray-600 mt-1">
+                <p className="text-slate-500 mt-1">
                   Admission No: {selectedStudent.admission_no}
                 </p>
 
-                <p className="text-gray-600 mt-1">
+                <p className="text-slate-500 mt-1">
                   Category: {selectedStudent.category}
                 </p>
               </div>
@@ -1295,7 +1295,7 @@ async function loadProgrammes() {
                 <button
                   type="button"
                   onClick={updateProgramme}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-bold"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold transition"
                 >
                   💾 Update
                 </button>
@@ -1308,7 +1308,7 @@ async function loadProgrammes() {
                     setSelectedStudent(null);
                     setSelectedProgrammeId("");
                   }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg font-bold"
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition"
                 >
                   Cancel
                 </button>

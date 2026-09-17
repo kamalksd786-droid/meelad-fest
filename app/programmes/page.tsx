@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -15,6 +16,7 @@ const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
 const [registeredStudents, setRegisteredStudents] = useState<any[]>([]);
 const [loadingRegisteredStudents, setLoadingRegisteredStudents] = useState(false);
   const [search, setSearch] = useState("");
+  
 
   const [form, setForm] = useState({
     programme_name: "",
@@ -133,8 +135,8 @@ async function loadRegisteredStudents(programme: any) {
         await supabase
           .from("students")
           .select(
-            "id, admission_no, student_name, class, division, team, category, gender"
-          )
+  "id, admission_no, student_name, chest_no, class, division, team, category, gender"
+)
           .in("admission_no", batch)
           .order("class")
           .order("division")
@@ -168,6 +170,58 @@ async function loadRegisteredStudents(programme: any) {
   } finally {
     setLoadingRegisteredStudents(false);
   }
+}
+// ==========================================
+// EXPORT REGISTERED STUDENTS TO EXCEL
+// ==========================================
+
+function exportRegisteredStudentsToExcel() {
+  if (!registeredStudents.length) {
+    alert("No registered students to export.");
+    return;
+  }
+
+  const selectedProgramme = programmes.find(
+    (programme) =>
+      String(programme.id) === selectedProgrammeId
+  );
+
+  const excelData = registeredStudents.map(
+    (student, index) => ({
+      "Sl. No.": index + 1,
+      "Admission No.": student.admission_no || "",
+      "Chest No.": student.chest_no || "",
+      "Student Name": student.student_name || "",
+      "Class": student.class || "",
+      "Division": student.division || "",
+      "Team": student.team || "",
+      "Category": student.category || "",
+      "Gender": student.gender || "",
+    })
+  );
+
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Registered Students"
+  );
+
+  const programmeName =
+    selectedProgramme?.programme_name || "Programme";
+
+  const safeProgrammeName = programmeName
+    .replace(/[\\/:*?"<>|]/g, "")
+    .trim()
+    .replace(/\s+/g, "_");
+
+  XLSX.writeFile(
+    workbook,
+    `MUNAFASA_2026_${selectedProgrammeId}_${safeProgrammeName}_Students.xlsx`
+  );
 }
   async function saveProgramme() {
     if (!form.programme_name.trim()) {
@@ -615,6 +669,13 @@ const filteredProgrammes = programmes.filter((programme) => {
               >
                 📄 PDF
               </button>
+              <button
+  type="button"
+  onClick={exportRegisteredStudentsToExcel}
+  className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
+>
+  📊 Export Excel
+</button>
             </div>
           </div>
 
@@ -636,26 +697,43 @@ const filteredProgrammes = programmes.filter((programme) => {
 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-3 text-left">Sl. No.</th>
-                      <th className="border p-3 text-left">
-                        Admission No.
-                      </th>
-                      <th className="border p-3 text-left">
-                        Student Name
-                      </th>
-                      <th className="border p-3 text-left">Class</th>
-                      <th className="border p-3 text-left">
-                        Division
-                      </th>
-                      <th className="border p-3 text-left">Team</th>
-                      <th className="border p-3 text-left">
-                        Category
-                      </th>
-                      <th className="border p-3 text-left">Gender</th>
-                    </tr>
-                  </thead>
+                 <thead className="bg-gray-100">
+  <tr>
+    <th className="border p-3 text-left">Sl. No.</th>
+
+    <th className="border p-3 text-left">
+      Admission No.
+    </th>
+
+    <th className="border p-3 text-left">
+      Chest No.
+    </th>
+
+    <th className="border p-3 text-left">
+      Student Name
+    </th>
+
+    <th className="border p-3 text-left">
+      Class
+    </th>
+
+    <th className="border p-3 text-left">
+      Division
+    </th>
+
+    <th className="border p-3 text-left">
+      Team
+    </th>
+
+    <th className="border p-3 text-left">
+      Category
+    </th>
+
+    <th className="border p-3 text-left">
+      Gender
+    </th>
+  </tr>
+</thead>
 
                   <tbody>
                     {registeredStudents.map((student, index) => (
@@ -670,7 +748,9 @@ const filteredProgrammes = programmes.filter((programme) => {
                         <td className="border p-3 font-medium">
                           {student.admission_no || "-"}
                         </td>
-
+<td className="border p-3 font-medium">
+  {student.chest_no || "-"}
+</td>
                         <td className="border p-3 font-medium">
                           {student.student_name || "-"}
                         </td>
@@ -814,41 +894,62 @@ const filteredProgrammes = programmes.filter((programme) => {
 
       </div>
        <style jsx global>{`
-      @media print {
-        body * {
-          visibility: hidden;
-        }
+     @media print {
+  body * {
+    visibility: hidden;
+  }
 
-        #programme-report,
-        #programme-report * {
-          visibility: visible;
-        }
+  #registered-students-report,
+  #registered-students-report * {
+    visibility: visible;
+  }
 
-        #programme-report {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          padding: 20px;
-          background: white;
-        }
+  #registered-students-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 10px;
+    background: white;
+  }
 
-        #programme-report table {
-          width: 100%;
-          border-collapse: collapse;
-        }
+  #registered-students-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
 
-        #programme-report th,
-        #programme-report td {
-          border: 1px solid black;
-          padding: 8px;
-        }
+  #registered-students-report thead {
+    display: table-header-group;
+  }
 
-        @page {
-          size: landscape;
-          margin: 10mm;
-        }
-      }
+  #registered-students-report tbody {
+    display: table-row-group;
+  }
+
+  #registered-students-report tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  #registered-students-report th,
+  #registered-students-report td {
+    border: 1px solid #000;
+    padding: 5px;
+  }
+
+  /* Important: remove scrolling/height restrictions while printing */
+  #registered-students-report,
+  #registered-students-report div {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+}
     `}</style>
 
     </DashboardLayout>
