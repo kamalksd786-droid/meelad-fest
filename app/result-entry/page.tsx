@@ -1487,25 +1487,33 @@ function printWinnerSheet() {
     printWindow.document.close();
   }
 function printAllEnteredResults() {
-  const enteredResults = results.filter(
-    (result) =>
-      result.position === "First" ||
-      result.position === "Second" ||
-      result.position === "Third"
-  );
+  const enteredResults = results
+    .filter(
+      (result) =>
+        result.position === "First" ||
+        result.position === "Second" ||
+        result.position === "Third"
+    );
 
   if (enteredResults.length === 0) {
     alert("No results have been entered yet.");
     return;
   }
 
+  // Group all entered results by Programme ID.
   const programmeIds = Array.from(
     new Set(
       enteredResults.map(
         (result) => result.programme_id
       )
     )
-  );
+  ).sort((a, b) => a - b);
+
+  const positionOrder: Record<string, number> = {
+    First: 1,
+    Second: 2,
+    Third: 3,
+  };
 
   const sections = programmeIds
     .map((programmeId) => {
@@ -1519,22 +1527,24 @@ function printAllEnteredResults() {
             result.programme_id === programmeId
         )
         .sort((a, b) => {
-          const order: Record<string, number> = {
-            First: 1,
-            Second: 2,
-            Third: 3,
-          };
+          const positionDifference =
+            (positionOrder[a.position] || 99) -
+            (positionOrder[b.position] || 99);
 
-          return (
-            (order[a.position] || 99) -
-            (order[b.position] || 99)
+          if (positionDifference !== 0) {
+            return positionDifference;
+          }
+
+          return a.student_name.localeCompare(
+            b.student_name
           );
         });
 
-      if (!programmeResults.length) {
+      if (programmeResults.length === 0) {
         return "";
       }
 
+      // For group programmes, multiple students can have the same position.
       const rows = programmeResults
         .map(
           (result) => `
@@ -1542,17 +1552,17 @@ function printAllEnteredResults() {
               <td class="position">
                 ${escapeHtml(result.position)}
               </td>
-
               <td>
                 ${escapeHtml(result.student_name)}
               </td>
-
-              <td>
+              <td class="center">
                 ${escapeHtml(result.chest_no || "-")}
               </td>
-
-              <td>
+              <td class="center">
                 ${escapeHtml(result.team || "-")}
+              </td>
+              <td class="points">
+                ${escapeHtml(result.points)}
               </td>
             </tr>
           `
@@ -1561,24 +1571,29 @@ function printAllEnteredResults() {
 
       return `
         <section class="programme-section">
-          <div class="programme-header">
+          <div class="programme-heading">
             <div class="programme-name">
               ${escapeHtml(
                 programme?.programme_name ||
-                programmeResults[0].programme_name
+                programmeResults[0].programme_name ||
+                "-"
               )}
             </div>
 
-            <div class="details">
-              Programme ID:
-              ${escapeHtml(programmeId)}
-              &nbsp; | &nbsp;
-              Category:
-              ${escapeHtml(
-                programme?.category ||
-                programmeResults[0].category ||
-                "-"
-              )}
+            <div class="programme-meta">
+              <span>
+                <b>Programme ID:</b>
+                ${escapeHtml(programmeId)}
+              </span>
+
+              <span>
+                <b>Category:</b>
+                ${escapeHtml(
+                  programme?.category ||
+                  programmeResults[0].category ||
+                  "-"
+                )}
+              </span>
             </div>
           </div>
 
@@ -1589,6 +1604,7 @@ function printAllEnteredResults() {
                 <th>Student Name</th>
                 <th>Chest No</th>
                 <th>Team</th>
+                <th>Points</th>
               </tr>
             </thead>
 
@@ -1604,7 +1620,7 @@ function printAllEnteredResults() {
   const printWindow = window.open(
     "",
     "_blank",
-    "width=1000,height=800"
+    "width=1100,height=850"
   );
 
   if (!printWindow) {
@@ -1618,7 +1634,7 @@ function printAllEnteredResults() {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>MUNAFASA 2026 - All Results</title>
+        <title>MUNAFASA 2026 - All Entered Results</title>
 
         <style>
           @page {
@@ -1640,12 +1656,12 @@ function printAllEnteredResults() {
           .main-header {
             text-align: center;
             border-bottom: 3px solid #111;
-            padding-bottom: 12px;
+            padding-bottom: 14px;
             margin-bottom: 25px;
           }
 
           .school {
-            font-size: 22px;
+            font-size: 23px;
             font-weight: bold;
           }
 
@@ -1659,33 +1675,40 @@ function printAllEnteredResults() {
             font-size: 22px;
             font-weight: bold;
             margin-top: 10px;
+            text-transform: uppercase;
           }
 
           .programme-section {
-            page-break-inside: avoid;
             margin-bottom: 30px;
+            page-break-inside: avoid;
           }
 
-          .programme-header {
+          .programme-heading {
             border: 2px solid #222;
             padding: 12px;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            page-break-after: avoid;
           }
 
           .programme-name {
-            font-size: 18px;
+            font-size: 19px;
             font-weight: bold;
+            text-transform: uppercase;
           }
 
-          .details {
+          .programme-meta {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 7px;
             font-size: 13px;
-            margin-top: 6px;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
+            page-break-inside: avoid;
           }
 
           th {
@@ -1703,15 +1726,37 @@ function printAllEnteredResults() {
           }
 
           .position {
-            width: 18%;
+            width: 17%;
             text-align: center;
             font-weight: bold;
+          }
+
+          .center {
+            text-align: center;
+          }
+
+          .points {
+            width: 10%;
+            text-align: center;
+            font-weight: bold;
+          }
+
+          .page-break {
+            page-break-before: always;
           }
 
           @media print {
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+            }
+
+            .programme-section {
+              page-break-inside: avoid;
+            }
+
+            .programme-heading {
+              page-break-after: avoid;
             }
           }
         </style>
@@ -1746,6 +1791,7 @@ function printAllEnteredResults() {
 
   printWindow.document.close();
 }
+
   // =========================================================
   // FILTER PROGRAMMES
   // =========================================================
@@ -2024,7 +2070,7 @@ function printAllEnteredResults() {
 
               <input
                 className="border rounded-lg w-full p-3 mb-3"
-                placeholder="Search Chest No or Student Name"
+                placeholder="Search by Chest No or Student Name"
                 value={search}
                 onChange={(e) =>
                   searchStudent(
@@ -2247,7 +2293,7 @@ function printAllEnteredResults() {
 
                  <input
   className="border rounded-lg w-full p-3"
-  placeholder="Enter Chest No / Admission No"
+  placeholder="Enter Chest No or Student Name"
   value={firstSearch}
   onChange={(e) => setFirstSearch(e.target.value)}
   onKeyDown={(e) => {
@@ -2303,7 +2349,7 @@ function printAllEnteredResults() {
 
                   <input
   className="border rounded-lg w-full p-3"
-  placeholder="Enter Chest No / Admission No"
+  placeholder="Enter Chest No or Student Name"
   value={secondSearch}
   onChange={(e) => setSecondSearch(e.target.value)}
   onKeyDown={(e) => {
@@ -2359,7 +2405,7 @@ function printAllEnteredResults() {
 
                   <input
   className="border rounded-lg w-full p-3"
-  placeholder="Enter Chest No / Admission No"
+  placeholder="Enter Chest No or Student Name"
   value={thirdSearch}
   onChange={(e) => setThirdSearch(e.target.value)}
   onKeyDown={(e) => {
@@ -2590,18 +2636,28 @@ function printAllEnteredResults() {
                     >
                       🖨️ Print Result — A5
                     </button>
-<button
-  type="button"
-  onClick={printAllEnteredResults}
-  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg font-bold"
->
-  📄 Print All Results / PDF
-</button>
+
                   </div>
 
                 </div>
 
               )}
+
+              <div className="mt-5 border-t pt-5">
+                <button
+                  type="button"
+                  onClick={printAllEnteredResults}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg font-bold w-full"
+                >
+                  📄 Print All Entered Results / PDF
+                </button>
+
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Prints every entered programme separately with Programme Name,
+                  Programme ID, Category, 1st, 2nd, 3rd, Student Name, Chest No,
+                  Team and Points.
+                </p>
+              </div>
 
             </div>
 
