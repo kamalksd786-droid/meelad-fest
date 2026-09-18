@@ -42,6 +42,16 @@ type Result = {
   created_at: string;
 };
 
+type LivePoster = {
+  id: number;
+  image_url: string;
+  student_name: string | null;
+  programme_name: string | null;
+  category: string | null;
+  team: string | null;
+  created_at: string;
+};
+
 type ResultGroup = {
   key: string;
   programme_id: number;
@@ -63,6 +73,7 @@ type DisplayMode =
   | "current"
   | "next"
   | "result"
+  | "poster"
   | "leaderboard";
 
 export default function LiveDisplayPage() {
@@ -71,6 +82,7 @@ export default function LiveDisplayPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [resultGroups, setResultGroups] = useState<ResultGroup[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [livePoster, setLivePoster] = useState<LivePoster | null>(null);
 
   const [mode, setMode] =
     useState<DisplayMode>("current");
@@ -80,6 +92,12 @@ export default function LiveDisplayPage() {
     const cycleStartRef = useRef(Date.now());
     const latestResultRef =
   useRef<string | null>(null);
+  const seenPublishedResultsRef =
+  useRef<Set<string>>(new Set());
+  const latestPosterRef =
+    useRef<string | null>(null);
+  const [displayEventKey, setDisplayEventKey] =
+    useState(0);
 
   const [showLeaderboard, setShowLeaderboard] =
     useState(false);
@@ -94,6 +112,8 @@ export default function LiveDisplayPage() {
   */
  
 
+  // Refresh Supabase data every 5 seconds so schedules, results and
+  // newly generated posters appear without refreshing the browser.
   useEffect(() => {
     loadAllData();
 
@@ -105,51 +125,42 @@ export default function LiveDisplayPage() {
   }, []);
 
   /*
-  ============================================================
-  AUTOMATIC DISPLAY ROTATION
+  ------------------------------------------------------------
+  NORMAL 3-MINUTE ROTATION
+  ------------------------------------------------------------
+  Current -> Next -> Current -> Next ...
 
-  CURRENT
-      ↓
-  NEXT
-      ↓
-  PUBLISHED RESULTS
-      ↓
-  LEADERBOARD (ONLY IF ADMIN ENABLED)
-      ↓
-  CURRENT
-  ============================================================
+  Published results and generated posters interrupt this cycle.
   */
+  useEffect(() => {
+    if (mode === "result" || mode === "poster") return;
 
-  // data refresh
-useEffect(() => {
-  loadAllData();
+    const rotation = setTimeout(() => {
+      setMode((currentMode) =>
+        currentMode === "current" ? "next" : "current"
+      );
+    }, 180000);
 
-  const refresh = setInterval(() => {
-    loadAllData();
-  }, 5000);
+    return () => clearTimeout(rotation);
+  }, [mode]);
 
-  return () => clearInterval(refresh);
-}, []);
+  /*
+  ------------------------------------------------------------
+  RESULT / POSTER = 15 SECOND INTERRUPT
+  ------------------------------------------------------------
+  displayEventKey makes sure a second result/poster published while
+  the same interrupt is already on screen gets a fresh 15 seconds.
+  */
+  useEffect(() => {
+    if (mode !== "result" && mode !== "poster") return;
 
+    const interruptTimer = setTimeout(() => {
+      setMode("current");
+      setResultIndex(0);
+    }, 15000);
 
-/* 👇 NEW 3-MINUTE CYCLE CODE GOES HERE */
-
-useEffect(() => {
-  const rotation = setInterval(() => {
-    // your new code
-  }, 15000);
-
-  return () => clearInterval(rotation);
-}, [
-  resultGroups.length,
-  resultIndex,
-  showLeaderboard,
-]);
-
-
-/* 👇 THEN YOUR EXISTING CODE CONTINUES */
-
-
+    return () => clearTimeout(interruptTimer);
+  }, [mode, displayEventKey]);
 
   /*
   ============================================================
@@ -163,6 +174,7 @@ useEffect(() => {
       loadStages(),
       loadSchedules(),
       loadResults(),
+      loadLivePoster(),
       loadLeaderboard(),
       loadDisplaySettings(),
     ]);
@@ -282,39 +294,39 @@ useEffect(() => {
         points:
           Number(result.points) || 0,
       }));
-      // ==================================================
-// DETECT NEWLY PUBLISHED RESULT
-// ==================================================
 
-if (publishedResults.length > 0) {
-  const newestResult =
-    publishedResults[0];
+    // Detect ANY newly published result, including an older saved
+    // result that is published after another result already exists.
+    const currentPublishedKeys = new Set(
+      publishedResults.map((result) => String(result.id))
+    );
 
-  const newestResultKey =
-    String(newestResult.id);
+    // If a result is unpublished, forget it so republishing it later
+    // can trigger the Live Display again.
+    seenPublishedResultsRef.current.forEach((key) => {
+      if (!currentPublishedKeys.has(key)) {
+        seenPublishedResultsRef.current.delete(key);
+      }
+    });
 
-  // First load: remember the current latest result
-  // without interrupting the display.
-  if (
-    latestResultRef.current === null
-  ) {
+    let newlyPublishedResultKey: string | null = null;
+
+    for (const result of publishedResults) {
+      const key = String(result.id);
+      if (!seenPublishedResultsRef.current.has(key)) {
+        newlyPublishedResultKey = key;
+        break;
+      }
+    }
+
+    currentPublishedKeys.forEach((key) => {
+      seenPublishedResultsRef.current.add(key);
+    });
+
     latestResultRef.current =
-      newestResultKey;
-  }
-
-  // A NEW result has been published.
-  else if (
-    latestResultRef.current !==
-    newestResultKey
-  ) {
-    latestResultRef.current =
-      newestResultKey;
-
-    // Immediately show the newest result.
-    setResultIndex(0);
-    setMode("result");
-  }
-}
+      publishedResults.length > 0
+        ? String(publishedResults[0].id)
+        : null;
 
     /*
     ------------------------------------------------------------
@@ -401,6 +413,27 @@ if (publishedResults.length > 0) {
 
     setResultGroups(groups);
 
+    // Show the exact newly published result/group for 15 seconds.
+    if (newlyPublishedResultKey !== null) {
+      const newlyPublished = publishedResults.find(
+        (result) => String(result.id) === newlyPublishedResultKey
+      );
+
+      if (newlyPublished) {
+        const targetGroupKey =
+          newlyPublished.group_result_id ||
+          `individual-${newlyPublished.id}`;
+
+        const targetIndex = groups.findIndex(
+          (group) => group.key === targetGroupKey
+        );
+
+        setResultIndex(targetIndex >= 0 ? targetIndex : 0);
+        setDisplayEventKey((value) => value + 1);
+        setMode("result");
+      }
+    }
+
     setResultIndex((current) => {
       if (groups.length === 0) {
         return 0;
@@ -412,6 +445,52 @@ if (publishedResults.length > 0) {
 
       return current;
     });
+  }
+
+  /*
+  ============================================================
+  LIVE POSTER
+  ============================================================
+  The poster designer uploads the generated PNG to the
+  live-posters bucket and records it in live_display_posts.
+  The newest poster interrupts the display for 15 seconds.
+  */
+
+  async function loadLivePoster() {
+    const { data, error } = await supabase
+      .from("live_display_posts")
+      .select(
+        "id, image_url, student_name, programme_name, category, team, created_at"
+      )
+      .eq("post_type", "poster")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Live poster error:", error);
+      return;
+    }
+
+    if (!data) return;
+
+    const poster = data as LivePoster;
+    setLivePoster(poster);
+
+    const posterKey = String(poster.id);
+
+    // First load: remember the current poster without interrupting.
+    if (latestPosterRef.current === null) {
+      latestPosterRef.current = posterKey;
+      return;
+    }
+
+    // A new poster was generated/published. Show it immediately.
+    if (latestPosterRef.current !== posterKey) {
+      latestPosterRef.current = posterKey;
+      setDisplayEventKey((value) => value + 1);
+      setMode("poster");
+    }
   }
 
   /*
@@ -791,6 +870,49 @@ if (publishedResults.length > 0) {
           text="Next: Published Results"
         />
 
+      </main>
+    );
+  }
+
+  /*
+  ============================================================
+  GENERATED POSTER
+  ============================================================
+  */
+
+  if (mode === "poster") {
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 py-6">
+        <div className="relative w-full h-[calc(100vh-90px)] flex items-center justify-center">
+          {livePoster?.image_url ? (
+            <img
+              src={livePoster.image_url}
+              alt={livePoster.student_name || "MUNAFASA poster"}
+              className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
+            />
+          ) : (
+            <div className="text-4xl font-bold">
+              MUNAFASA 2026
+            </div>
+          )}
+
+          {(livePoster?.student_name || livePoster?.programme_name) && (
+            <div className="absolute bottom-4 left-4 right-4 text-center bg-black/70 rounded-xl px-5 py-3">
+              {livePoster.student_name && (
+                <div className="text-2xl md:text-4xl font-extrabold">
+                  {livePoster.student_name}
+                </div>
+              )}
+              {livePoster.programme_name && (
+                <div className="text-lg md:text-2xl text-gray-300 mt-1">
+                  {livePoster.programme_name}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <RotationFooter text="Next: Current Programmes" />
       </main>
     );
   }
@@ -1257,7 +1379,7 @@ function RotationFooter({
 }) {
   return (
     <div className="fixed bottom-4 left-0 right-0 text-center text-gray-600 text-sm">
-      🔄 Results change every 15 seconds • Current & Next repeat every 3 minutes •{" "}
+      🔄 Current / Next: 3 minutes • Result / Poster: 15 seconds •{" "}
       {text}
     </div>
   );

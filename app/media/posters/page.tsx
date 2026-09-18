@@ -27,23 +27,18 @@ export default function PosterDesigner() {
   const posterRef = useRef<HTMLDivElement>(null);
   const hiddenPosterRef = useRef<HTMLDivElement>(null);
 
-  const [selectedTemplate, setSelectedTemplate] =
-  useState("participation");
+  const [selectedTemplate, setSelectedTemplate] = useState("participation");
+  const [programmes, setProgrammes] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedProgramme, setSelectedProgramme] = useState("");
 
-const [programmes, setProgrammes] = useState<any[]>([]);
-const [students, setStudents] = useState<any[]>([]);
+  const {
+    isGenerating,
+    progress,
+    currentStudent,
+  } = useBulkPosterGenerator();
 
-const [selectedProgramme, setSelectedProgramme] =
-  useState("");
-
-const {
-  generate,
-  isGenerating,
-  progress,
-  currentStudent,
-} = useBulkPosterGenerator();
-const [posterData, setPosterData] =
-  useState<PosterData>({
+  const [posterData, setPosterData] = useState<PosterData>({
     studentName: "",
     programme: "",
     category: "",
@@ -70,160 +65,205 @@ const [posterData, setPosterData] =
   }
 
   async function loadStudents(programmeId: string) {
-  setSelectedProgramme(programmeId);
+    setSelectedProgramme(programmeId);
 
-  // Find selected programme
-  const selected = programmes.find(
-    (p) => String(p.id) === String(programmeId)
-  );
+    const selected = programmes.find(
+      (p) => String(p.id) === String(programmeId)
+    );
 
-  // Save programme name
-  if (selected) {
+    if (selected) {
+      setPosterData((prev) => ({
+        ...prev,
+        programme: selected.programme_name,
+      }));
+    }
+
+    const { data, error } = await supabase
+      .from("registrations")
+      .select("id, student_name, admission_no")
+      .eq("programme_id", programmeId)
+      .order("student_name");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setStudents(data || []);
+  }
+
+  async function selectStudent(student: any) {
+    const { data, error } = await supabase
+      .from("students")
+      .select("*")
+      .eq("admission_no", student.admission_no)
+      .single();
+
+    if (error || !data) {
+      console.error(error);
+      return;
+    }
+
     setPosterData((prev) => ({
       ...prev,
-      programme: selected.programme_name,
+      studentName: data.student_name,
+      programme:
+        programmes.find(
+          (p) => String(p.id) === String(selectedProgramme)
+        )?.programme_name || "",
+      category: data.category,
+      team: data.team.toUpperCase() + " TEAM",
+      photo: data.photo_url || "",
     }));
   }
 
-  // Load registered students
-  const { data, error } = await supabase
-    .from("registrations")
-    .select("id, student_name, admission_no")
-    .eq("programme_id", programmeId)
-    .order("student_name");
+  async function publishPosterToLiveDisplay(
+    dataUrl: string,
+    data: Partial<PosterData> = posterData
+  ) {
+    try {
+      const blob = await fetch(dataUrl).then((response) => response.blob());
 
-  if (error) {
-    console.error(error);
-    return;
+      const safeStudent = (data.studentName || "poster")
+        .replace(/[^a-zA-Z0-9_-]+/g, "_")
+        .slice(0, 80);
+
+      const filePath = `posters/${Date.now()}-${crypto.randomUUID()}-${safeStudent}.png`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("live-posters")
+        .upload(filePath, blob, {
+          contentType: "image/png",
+          cacheControl: "31536000",
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("live-posters")
+        .getPublicUrl(filePath);
+
+      const { error: insertError } = await supabase
+        .from("live_display_posts")
+        .insert({
+          post_type: "poster",
+          image_url: publicUrlData.publicUrl,
+          student_name: data.studentName || null,
+          programme_name: data.programme || null,
+          category: data.category || null,
+          team: data.team || null,
+        });
+
+      if (insertError) throw insertError;
+      return true;
+    } catch (error) {
+      console.error("Failed to publish poster to Live Display:", error);
+      return false;
+    }
   }
 
-  setStudents(data || []);
-}
+  async function exportPNG() {
+    if (!posterRef.current) {
+      alert("Poster not found.");
+      return;
+    }
 
-  async function selectStudent(student: any) {
-  const { data, error } = await supabase
-    .from("students")
-    .select("*")
-    .eq("admission_no", student.admission_no)
-    .single();
+    try {
+      const dataUrl = await htmlToImage.toPng(posterRef.current, {
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: "transparent",
+      });
 
-  if (error || !data) {
-    console.error(error);
-    return;
+      const link = document.createElement("a");
+      link.download = `${posterData.studentName || "poster"}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      const published = await publishPosterToLiveDisplay(dataUrl);
+
+      if (published) {
+        alert("Poster exported and published to Live Display for 15 seconds.");
+      } else {
+        alert("Poster exported successfully, but Live Display publishing failed.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to export PNG.");
+    }
   }
 
- setPosterData((prev) => ({
-  ...prev,
-  studentName: data.student_name,
+  async function generateAllPosters() {
+    if (students.length === 0) {
+      alert("Please select a programme first.");
+      return;
+    }
 
-  programme:
-    programmes.find(
-      p => String(p.id) === String(selectedProgramme)
-    )?.programme_name || "",
+    const zip = new ZipExporter();
 
-  category: data.category,
+    for (const student of students) {
+      await selectStudent(student);
 
-  team: data.team.toUpperCase() + " TEAM",
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-  photo: data.photo_url || "",
-}));
-}
+      if (!posterRef.current) continue;
 
- async function exportPNG() {
-  if (!posterRef.current) {
-    alert("Poster not found.");
-    return;
+      const dataUrl = await htmlToImage.toPng(posterRef.current, {
+        pixelRatio: 3,
+        cacheBust: true,
+      });
+
+      zip.addPoster(
+        `${student.admission_no}_${student.student_name}_${posterData.programme}_${posterData.category}_${posterData.team}.png`,
+        dataUrl
+      );
+
+      // Publish every generated poster. Live Display always shows the newest
+      // generated poster and keeps the newest one for 15 seconds.
+      await publishPosterToLiveDisplay(dataUrl, {
+        studentName: student.student_name,
+        programme: posterData.programme,
+        category: posterData.category,
+        team: posterData.team,
+      });
+    }
+
+    await zip.download("MUNAFASA_PARTICIPATION_POSTERS.zip");
+    alert("ZIP generated successfully. The latest generated poster was published to Live Display.");
   }
 
-  try {
-    const dataUrl = await htmlToImage.toPng(posterRef.current, {
-      pixelRatio: 3,
-      cacheBust: true,
-      backgroundColor: "transparent",
-    });
-
-    const link = document.createElement("a");
-    link.download = `${posterData.studentName || "poster"}.png`;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to export PNG.");
-  }
-}
- async function generateAllPosters() {
-  if (students.length === 0) {
-    alert("Please select a programme first.");
-    return;
-  }
-
-  const zip = new ZipExporter();
-
-  for (const student of students) {
-
-    // Update poster
-    await selectStudent(student);
-
-    // Wait for React to render
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (!posterRef.current) continue;
-
-    // Convert poster to PNG
-    const dataUrl = await htmlToImage.toPng(posterRef.current, {
-      pixelRatio: 3,
-      cacheBust: true,
-    });
-
-    // Add PNG to ZIP
-   zip.addPoster(
-    `${student.admission_no}_${student.student_name}_${posterData.programme}_${posterData.category}_${posterData.team}.png`,
-    dataUrl
-);
-  }
-
-  // Download ZIP
-  await zip.download(
-    "MUNAFASA_PARTICIPATION_POSTERS.zip"
-  );
-
-  alert("ZIP generated successfully.");
-}
-    return (
+  return (
     <div className="h-screen flex flex-col bg-gray-100">
-
       <Toolbar
-  onSave={() => alert("Save coming soon")}
-  onExportPNG={exportPNG}
-  onExportPDF={() => alert("PDF Export coming soon")}
-  onGenerateAll={generateAllPosters}
-/>
-{isGenerating && (
-  <div className="bg-white border-b p-3">
-    <div className="w-full bg-gray-200 rounded-full h-3">
-      <div
-        className="bg-purple-600 h-3 rounded-full transition-all"
-        style={{ width: `${progress}%` }}
+        onSave={() => alert("Save coming soon")}
+        onExportPNG={exportPNG}
+        onExportPDF={() => alert("PDF Export coming soon")}
+        onGenerateAll={generateAllPosters}
       />
-    </div>
 
-    <p className="text-sm mt-2 text-center">
-      Generating {currentStudent}
+      {isGenerating && (
+        <div className="bg-white border-b p-3">
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-purple-600 h-3 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
 
-{progress}%
-    </p>
-  </div>
-)}
+          <p className="text-sm mt-2 text-center">
+            Generating {currentStudent} {progress}%
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-1">
-
         <LeftPanel
           selectedTemplate={selectedTemplate}
           setSelectedTemplate={setSelectedTemplate}
         />
 
         <div className="flex-1 flex flex-col p-4">
-
           <div className="mb-4">
             <ProgrammeSelector
               programmes={programmes}
@@ -233,12 +273,8 @@ const [posterData, setPosterData] =
           </div>
 
           <div className="flex flex-1 gap-4">
-
             <div className="w-72">
-              <StudentList
-                students={students}
-                onSelect={selectStudent}
-              />
+              <StudentList students={students} onSelect={selectStudent} />
             </div>
 
             <div
@@ -250,23 +286,18 @@ const [posterData, setPosterData] =
                 template={selectedTemplate}
               />
             </div>
-
           </div>
-
         </div>
 
         <RightPanel
           posterData={posterData}
           setPosterData={setPosterData}
         />
-
       </div>
+
       <div ref={hiddenPosterRef}>
-  <HiddenPoster
-    posterData={posterData}
-    template={selectedTemplate}
-  />
-</div>
-          </div>
+        <HiddenPoster posterData={posterData} template={selectedTemplate} />
+      </div>
+    </div>
   );
 }
