@@ -99,6 +99,12 @@ export default function LiveDisplayPage() {
   const [displayEventKey, setDisplayEventKey] =
     useState(0);
 
+  // Prevent overlapping Supabase refreshes. Overlapping refreshes can
+  // repeatedly detect the same result/poster and keep the 15-second
+  // interrupt alive forever.
+  const refreshInProgressRef =
+    useRef(false);
+
   const [showLeaderboard, setShowLeaderboard] =
     useState(false);
 
@@ -115,10 +121,24 @@ export default function LiveDisplayPage() {
   // Refresh Supabase data every 5 seconds so schedules, results and
   // newly generated posters appear without refreshing the browser.
   useEffect(() => {
-    loadAllData();
+    const refreshNow = async () => {
+      if (refreshInProgressRef.current) {
+        return;
+      }
+
+      refreshInProgressRef.current = true;
+
+      try {
+        await loadAllData();
+      } finally {
+        refreshInProgressRef.current = false;
+      }
+    };
+
+    refreshNow();
 
     const refresh = setInterval(() => {
-      loadAllData();
+      refreshNow();
     }, 5000);
 
     return () => clearInterval(refresh);
@@ -133,13 +153,24 @@ export default function LiveDisplayPage() {
   Published results and generated posters interrupt this cycle.
   */
   useEffect(() => {
-    if (mode === "result" || mode === "poster") return;
+    if (mode === "result" || mode === "poster") {
+      return;
+    }
 
     const rotation = setTimeout(() => {
-      setMode((currentMode) =>
-        currentMode === "current" ? "next" : "current"
-      );
-    }, 180000);
+      setMode((currentMode) => {
+        if (
+          currentMode === "current" ||
+          currentMode === "next"
+        ) {
+          return currentMode === "current"
+            ? "next"
+            : "current";
+        }
+
+        return "current";
+      });
+    }, 3 * 60 * 1000);
 
     return () => clearTimeout(rotation);
   }, [mode]);
@@ -414,7 +445,10 @@ export default function LiveDisplayPage() {
     setResultGroups(groups);
 
     // Show the exact newly published result/group for 15 seconds.
-    if (newlyPublishedResultKey !== null) {
+    if (
+      newlyPublishedResultKey !== null &&
+      mode !== "result"
+    ) {
       const newlyPublished = publishedResults.find(
         (result) => String(result.id) === newlyPublishedResultKey
       );
@@ -486,7 +520,10 @@ export default function LiveDisplayPage() {
     }
 
     // A new poster was generated/published. Show it immediately.
-    if (latestPosterRef.current !== posterKey) {
+    if (
+      latestPosterRef.current !== posterKey &&
+      mode !== "poster"
+    ) {
       latestPosterRef.current = posterKey;
       setDisplayEventKey((value) => value + 1);
       setMode("poster");
