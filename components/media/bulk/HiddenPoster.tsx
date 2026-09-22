@@ -4,12 +4,20 @@ import { forwardRef } from "react";
 import type Konva from "konva";
 import PosterCanvas from "../PosterCanvas";
 
+type Winner = {
+  studentName: string;
+  team: string;
+  photo: string;
+  position: 1 | 2 | 3;
+};
+
 type PosterData = {
   studentName: string;
   programme: string;
   category: string;
   team: string;
   photo: string;
+  winners: Winner[];
 };
 
 type Props = {

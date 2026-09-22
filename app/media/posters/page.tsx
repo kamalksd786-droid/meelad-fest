@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as htmlToImage from "html-to-image";
+import type Konva from "konva";
 
 import { supabase } from "@/lib/supabase";
 
@@ -29,7 +29,8 @@ type PosterData = {
 
 export default function PosterDesigner() {
   const posterRef = useRef<HTMLDivElement>(null);
-  const shareFileRef = useRef<File | null>(null);
+const stageRef = useRef<Konva.Stage>(null);
+const shareFileRef = useRef<File | null>(null);
 
   const [selectedTemplate, setSelectedTemplate] =
     useState("winner");
@@ -335,28 +336,29 @@ if (!position) {
    * Publish generated poster to Live Display.
    */
   useEffect(() => {
-  if (!posterRef.current || posterData.winners.length === 0) {
+  if (!stageRef.current || posterData.winners.length === 0) {
     shareFileRef.current = null;
     return;
   }
 
   const prepareShareFile = async () => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (!posterRef.current) return;
-
-      const blob = await htmlToImage.toBlob(
-        posterRef.current,
-        {
-          pixelRatio: 3,
-          quality: 0.95,
-          backgroundColor: "#ffffff",
-          cacheBust: true,
-        }
+      await new Promise((resolve) =>
+        setTimeout(resolve, 500)
       );
 
-      if (!blob) return;
+      const stage = stageRef.current;
+
+      if (!stage) return;
+
+      const dataUrl = stage.toDataURL({
+        pixelRatio: 3,
+        mimeType: "image/jpeg",
+        quality: 0.95,
+      });
+
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
 
       const fileName =
         `MUNAFASA-${posterData.programme
@@ -370,10 +372,12 @@ if (!position) {
         }
       );
 
-      console.log("WhatsApp share image prepared.");
+      console.log(
+        "WhatsApp image prepared directly from Konva Stage."
+      );
     } catch (error) {
       console.error(
-        "Failed to prepare WhatsApp share image:",
+        "Failed to prepare Konva poster image:",
         error
       );
 
@@ -463,63 +467,55 @@ if (!position) {
    * Download PNG + publish to Live Display.
    */
   async function exportPNG() {
-    if (!posterRef.current) {
-      alert("Poster not found.");
-      return;
-    }
-
-    if (posterData.winners.length === 0) {
-      alert(
-        "Please select a programme with published winners."
-      );
-      return;
-    }
-
-    try {
-      const dataUrl = await htmlToImage.toPng(
-        posterRef.current,
-        {
-          pixelRatio: 3,
-          cacheBust: true,
-          backgroundColor: "transparent",
-        }
-      );
-
-      const link =
-        document.createElement("a");
-
-      link.download =
-        `${posterData.programme || "MUNAFASA-WINNERS"}.png`;
-
-      link.href = dataUrl;
-      link.click();
-
-      const published =
-        await publishPosterToLiveDisplay(
-          dataUrl,
-          posterData
-        );
-
-      if (published) {
-        alert(
-          "Winner poster downloaded and published to Live Display."
-        );
-      } else {
-        alert(
-          "Poster downloaded, but Live Display publishing failed."
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      alert(
-        "Failed to export winner poster."
-      );
-    }
+  if (!stageRef.current) {
+    alert("Poster not found.");
+    return;
   }
 
-  /*
-   * Share / WhatsApp.
-   */
+  if (posterData.winners.length === 0) {
+    alert(
+      "Please select a programme with published winners."
+    );
+    return;
+  }
+
+  try {
+    const stage = stageRef.current;
+
+    const dataUrl = stage.toDataURL({
+      pixelRatio: 3,
+      mimeType: "image/png",
+    });
+
+    const link = document.createElement("a");
+
+    link.download =
+      `${posterData.programme || "MUNAFASA-WINNERS"}.png`;
+
+    link.href = dataUrl;
+    link.click();
+
+    const published =
+      await publishPosterToLiveDisplay(
+        dataUrl,
+        posterData
+      );
+
+    if (published) {
+      alert(
+        "Winner poster downloaded and published to Live Display."
+      );
+    } else {
+      alert(
+        "Poster downloaded, but Live Display publishing failed."
+      );
+    }
+  } catch (error) {
+    console.error(error);
+
+    alert("Failed to export winner poster.");
+  }
+}
 async function sharePoster() {
   if (!posterRef.current) {
     alert("Poster not found.");
@@ -650,9 +646,10 @@ async function sharePoster() {
               >
 
                 <PosterCanvas
-                  posterData={posterData}
-                  template={selectedTemplate}
-                />
+  ref={stageRef}
+  posterData={posterData}
+  template={selectedTemplate}
+/>
 
               </div>
 
