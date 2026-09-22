@@ -81,25 +81,52 @@ function TemplateImage() {
     />
   );
 }
-function BadgeOverlay() {
-  const [image] = useImage(
-    "/media/posters/winner-badges-overlay-transparent-clean.png"
-  );
+function WinnerBadge({
+  position,
+  x,
+  y,
+  width,
+  height,
+}: {
+  position: 1 | 2 | 3;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) {
+  const imagePath =
+    position === 1
+      ? "/media/posters/ribbon-1st.png"
+      : position === 2
+      ? "/media/posters/ribbon-2nd.png"
+      : "/media/posters/ribbon-3rd.png";
+
+  const [image] = useImage(imagePath);
 
   if (!image) return null;
 
   return (
     <KonvaImage
       image={image}
-      x={0}
-      y={0}
-      width={WIDTH}
-      height={HEIGHT}
-      listening={false}
-      draggable={false}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      
+      onDragStart={(e) => {
+        e.cancelBubble = true;
+      }}
+      onDragEnd={(e) => {
+        console.log(
+          `Position ${position} badge:`,
+          e.target.x(),
+          e.target.y()
+        );
+      }}
     />
   );
 }
+
 function WinnerPhoto({
   winner,
   position,
@@ -570,22 +597,37 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
 
 <TemplateImage />
 
-{/* PROGRAMME + CATEGORY */}
+{/* PROGRAMME NAME */}
 <Text
-  text={`${posterData.programme.toUpperCase()} — ${posterData.category.toUpperCase()}`}
-  x={120}
-  y={390}
-  width={700}
-  height={42}
+  text={posterData.programme.toUpperCase()}
+  x={80}
+  y={380}
+  width={740}
+  height={45}
   align="center"
   verticalAlign="middle"
-  fontSize={38}
+  fontSize={34}
   fontStyle="bold"
   fill="#530808"
   ellipsis
   listening={false}
 />
 
+{/* CATEGORY */}
+<Text
+  text={posterData.category.toUpperCase()}
+  x={80}
+  y={425}
+  width={740}
+  height={38}
+  align="center"
+  verticalAlign="middle"
+  fontSize={26}
+  fontStyle="bold"
+  fill="#530808"
+  ellipsis
+  listening={false}
+/>
 {/* PHOTOS - DRAG + ZOOM */}
 {first && (
   <WinnerPhoto
@@ -613,8 +655,7 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
     setTransform={updateTransform}
   />
 )}
-<BadgeOverlay />
-{/* BADGES / TEMPLATE ON TOP */}
+
 
 
 {/* NAMES + TEAMS */}
@@ -638,13 +679,41 @@ const PosterCanvas = forwardRef<Konva.Stage, Props>(
     position={3}
   />
 )}
+
         </Layer>
+
+       {/* MEDALS + RIBBONS — FIXED POSITIONS */}
+<Layer listening={false}>
+  <WinnerBadge
+    position={1}
+    x={83}
+    y={526}
+    width={105}
+    height={149}
+  />
+
+  <WinnerBadge
+    position={2}
+    x={316}
+    y={526}
+    width={105}
+    height={149}
+  />
+
+  <WinnerBadge
+    position={3}
+    x={545}
+    y={519}
+    width={105}
+    height={149}
+  />
+</Layer>
+
       </Stage>
     );
   }
 );
 
-PosterCanvas.displayName =
-  "PosterCanvas";
+PosterCanvas.displayName = "PosterCanvas";
 
 export default PosterCanvas;

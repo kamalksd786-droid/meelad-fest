@@ -135,7 +135,9 @@ const shareFileRef = useRef<File | null>(null);
           published
         `
         )
-       .in("position", ["First", "Second", "Third"])
+       .eq("programme_id", programmeId)
+.eq("published", true)
+.in("position", ["First", "Second", "Third"])
 
       if (error) {
         console.error("Published result loading error:", error);
@@ -332,24 +334,58 @@ if (!position) {
     }
   }
 
-  /*
-   * Publish generated poster to Live Display.
-   */
   useEffect(() => {
   if (!stageRef.current || posterData.winners.length === 0) {
     shareFileRef.current = null;
     return;
   }
 
+  let cancelled = false;
+
   const prepareShareFile = async () => {
     try {
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      // Wait for Konva images to finish loading.
+      for (let attempt = 0; attempt < 30; attempt++) {
+        if (cancelled) return;
+
+        const imageNodes = stage.find("Image") as Konva.Image[];
+
+const allLoaded = imageNodes.every((node) => {
+          const image = node.image() as HTMLImageElement | undefined;
+
+return (
+  image &&
+  image.complete &&
+  image.naturalWidth > 0 &&
+  image.naturalHeight > 0
+);
+        });
+
+        if (allLoaded) {
+          break;
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 200)
+        );
+      }
+
+      if (cancelled) return;
+
+      // Force Konva to redraw after the photos are loaded.
+      stage.batchDraw();
+
+      // Give the browser time to paint the images.
       await new Promise((resolve) =>
-        setTimeout(resolve, 500)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(resolve);
+        })
       );
 
-      const stage = stageRef.current;
-
-      if (!stage) return;
+      if (cancelled) return;
 
       const dataUrl = stage.toDataURL({
         pixelRatio: 3,
@@ -373,11 +409,11 @@ if (!position) {
       );
 
       console.log(
-        "WhatsApp image prepared directly from Konva Stage."
+        "WhatsApp poster prepared with all photos."
       );
     } catch (error) {
       console.error(
-        "Failed to prepare Konva poster image:",
+        "Failed to prepare WhatsApp poster:",
         error
       );
 
@@ -386,6 +422,10 @@ if (!position) {
   };
 
   prepareShareFile();
+
+  return () => {
+    cancelled = true;
+  };
 }, [posterData]);
   async function publishPosterToLiveDisplay(
     dataUrl: string,
@@ -517,7 +557,7 @@ if (!position) {
   }
 }
 async function sharePoster() {
-  if (!posterRef.current) {
+  if (!stageRef.current) {
     alert("Poster not found.");
     return;
   }
@@ -527,17 +567,45 @@ async function sharePoster() {
     return;
   }
 
-  const file = shareFileRef.current;
-
-  if (!file) {
-    alert(
-      "The poster image is still preparing. Please wait a moment and try again."
-    );
-    return;
-  }
-
   try {
-    // Native phone/tablet sharing
+    const stage = stageRef.current;
+
+    // Draw the current poster.
+    stage.batchDraw();
+    stage.draw();
+
+    // Capture the CURRENT Konva poster.
+    const dataUrl = stage.toDataURL({
+      pixelRatio: 3,
+      mimeType: "image/jpeg",
+      quality: 0.95,
+    });
+
+    // Convert data URL to Blob.
+    const base64 = dataUrl.split(",")[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const blob = new Blob(
+      [bytes],
+      { type: "image/jpeg" }
+    );
+
+    const fileName =
+      `MUNAFASA-${posterData.programme
+        .replace(/[^a-zA-Z0-9]/g, "-")}.jpg`;
+
+    const file = new File(
+      [blob],
+      fileName,
+      { type: "image/jpeg" }
+    );
+
+    // Share directly from the button click.
     if (
       navigator.share &&
       navigator.canShare &&
@@ -547,33 +615,35 @@ async function sharePoster() {
     ) {
       await navigator.share({
         title: "MUNAFASA Winner",
-        text: `${posterData.programme} — ${posterData.category}`,
+        text:
+          `${posterData.programme} — ${posterData.category}`,
         files: [file],
       });
 
       return;
     }
 
-    // Windows / desktop fallback
-    const url = URL.createObjectURL(file);
+    // Desktop fallback.
+    const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
     link.href = url;
-    link.download = file.name;
+    link.download = fileName;
 
     document.body.appendChild(link);
     link.click();
     link.remove();
 
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    URL.revokeObjectURL(url);
 
     alert(
-      "JPG downloaded. Open WhatsApp and attach it using Photos & videos."
+      "Image sharing is not supported on this device. The JPG has been downloaded."
     );
   } catch (error) {
-    console.error("WhatsApp sharing failed:", error);
+    console.error(
+      "WhatsApp sharing failed:",
+      error
+    );
 
     if (
       error instanceof DOMException &&
@@ -585,12 +655,12 @@ async function sharePoster() {
     alert("Could not share the winner poster.");
   }
 }
-  async function generateAllPosters() {
-    alert(
-      "Please select a programme first. Automatic winner poster generation will use the published results."
-    );
-  }
 
+async function generateAllPosters() {
+  alert(
+    "Please select a programme first. Automatic winner poster generation will use the published results."
+  );
+}
   return (
     <div className="h-screen flex flex-col bg-gray-100">
 
